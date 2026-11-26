@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>看图猜城市 - 莫兰迪绿野双人PK版</title>
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans SC"', 'sans-serif'],
+            display: ['"Plus Jakarta Sans"', '"Noto Sans SC"', 'sans-serif'],
+          },
+          colors: {
+            morandi: {
+              page: '#F3F5F0',      // 浅灰绿纸张背景
+              card: '#FFFFFF',      // 奶油纯白卡片
+              cream: '#F9FAF6',     // 暖白内嵌面板
+              border: '#D8E0D2',    // 草木灰绿边框
+              canvas: '#E8EDE2',    // 插画天空浅豆绿米白
+              hill: '#D5DFCC',      // 莫兰迪远山绿
+              skyline: '#B6C5B1',   // 雾霾绿城市剪影
+              meadow: '#7C937E',    // 深苔藓绿草地
+              bush: '#46604D',      // 深墨绿灌木
+              sun: '#EAD2A0',       // 暖杏太阳
+              terracotta: '#A65E46',// 赤陶红棕（主CTA/警告/重点）
+              sand: '#C29552',      // 砂岩暖金（元气/荣誉）
+              slate: '#8C9E8C',     // 青石板灰绿
+              olive: '#58705A',     // 深橄榄绿（主文字/成功）
+              rose: '#C98A7A',      // 柔雾粉棕
+              ink: '#2F3E32',       // 深森绿墨色文字
+              muted: '#738275'      // 柔和次要文字
+            }
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(70, 96, 77, 0.08)',
+            'soft-lg': '0 10px 30px -4px rgba(70, 96, 77, 0.12)',
+            'sand-glow': '0 6px 20px -2px rgba(194, 149, 82, 0.28)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #F3F5F0;
+      color: #2F3E32;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 浮动得分/元气飘字动画 */
+    @keyframes floatUpFade {
+      0% { opacity: 0; transform: translateY(8px) scale(0.85); }
+      20% { opacity: 1; transform: translateY(-6px) scale(1.08); }
+      80% { opacity: 1; transform: translateY(-22px) scale(1); }
+      100% { opacity: 0; transform: translateY(-34px) scale(0.95); }
+    }
+    .animate-score-pop {
+      animation: floatUpFade 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* 柔和呼吸光晕 */
+    @keyframes pulseSand {
+      0%, 100% { box-shadow: 0 4px 14px rgba(194, 149, 82, 0.35), 0 0 0 0 rgba(194, 149, 82, 0.45); }
+      50% { box-shadow: 0 4px 14px rgba(194, 149, 82, 0.35), 0 0 0 7px rgba(194, 149, 82, 0); }
+    }
+    .animate-pulse-sand {
+      animation: pulseSand 2.2s infinite;
+    }
+
+    /* 全服战报滚动条 */
+    @keyframes marqueeScroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    .animate-marquee {
+      display: flex;
+      width: max-content;
+      animation: marqueeScroll 28s linear infinite;
+    }
+    .animate-marquee:hover {
+      animation-play-state: paused;
+    }
+
+    /* 雷达波纹 */
+    @keyframes pulseRing {
+      0% { transform: scale(0.85); opacity: 0.85; }
+      100% { transform: scale(1.85); opacity: 0; }
+    }
+    .radar-ring {
+      animation: pulseRing 1.7s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+    .radar-ring-delay {
+      animation: pulseRing 1.7s cubic-bezier(0.24, 0, 0.38, 1) 0.85s infinite;
+    }
+
+    /* 轻触按压反馈 */
+    .soft-btn {
+      transition: transform 0.12s ease, background-color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .soft-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    /* 最后3秒赤陶红脉冲警告 */
+    @keyframes urgentPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    .animate-urgent-ring {
+      animation: urgentPulse 0.55s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased">
+
+  <!-- ==================== 顶部导航栏 ==================== -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-morandi-border px-3 sm:px-6 py-2.5">
+    <div class="max-w-4xl mx-auto flex items-center justify-between gap-2">
+      <!-- 品牌标识 -->
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="app.goHome()">
+        <div class="w-9 h-9 rounded-xl bg-morandi-meadow text-white flex items-center justify-center font-black text-base shadow-xs">
+          城
+        </div>
+        <div>
+          <h1 class="font-bold text-base sm:text-lg tracking-tight leading-none flex items-center gap-1.5 text-morandi-ink">
+            看图猜城市
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-morandi-canvas border border-morandi-border text-morandi-olive">双人PK版</span>
+          </h1>
+          <p class="text-[11px] text-morandi-muted hidden sm:block mt-0.5">莫兰迪绿野美术馆 · 10题10秒极速识城对决</p>
+        </div>
+      </div>
+
+      <!-- 右侧元气胶囊与快捷功能 -->
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 bg-morandi-cream border border-morandi-sand/60 rounded-full px-3 py-1 shadow-xs" title="当前元气值">
+          <span class="text-xs">⚡</span>
+          <span id="header-energy" class="font-display font-extrabold text-sm text-morandi-sand">200</span>
+        </div>
+
+        <button onclick="app.toggleRulesModal(true)" class="soft-btn w-8 h-8 rounded-full border border-morandi-border bg-white text-morandi-olive flex items-center justify-center font-bold text-xs hover:bg-morandi-cream" title="PK规则说明">
+          ?
+        </button>
+
+        <button id="btn-sound" onclick="app.toggleSound()" class="soft-btn w-8 h-8 rounded-full border border-morandi-border bg-white flex items-center justify-center text-xs hover:bg-morandi-cream" title="音效开关">
+          🔊
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 全局消息 Toast 容器 -->
+  <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-full max-w-sm px-4"></div>
+
+  <!-- 主视口 -->
+  <main class="flex-1 w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col justify-center">
+
+    <!-- ==================== 视图 1: 首页大厅 (LOBBY) ==================== -->
+    <section id="view-lobby" class="space-y-4 sm:space-y-5">
+
+      <!-- 1. 全服实时PK战报滚动条（激发竞技胜负欲） -->
+      <div class="bg-white border border-morandi-border rounded-2xl py-2 px-3 overflow-hidden flex items-center gap-2.5 shadow-soft">
+        <span class="shrink-0 bg-morandi-terracotta/15 text-morandi-terracotta border border-morandi-terracotta/30 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide">
+          实时战况
+        </span>
+        <div class="overflow-hidden flex-1 relative">
+          <div class="animate-marquee text-xs font-medium text-morandi-muted gap-8">
+            <span>🏆 <strong>杭州·林深</strong> 刚刚 10题全胜斩获 <span class="text-morandi-olive font-bold">1000 分</span>，独揽 200 元气奖池！</span>
+            <span>🔥 <strong>成都·辣椒战士</strong> 达成 <span class="text-morandi-terracotta font-bold">6 连胜</span> 晋升“黄金城市猎手”，正在擂台等待挑战！</span>
+            <span>⚡ <strong>北京·胡同百事通</strong> 仅用 1.6 秒秒杀“天坛祈年殿”，赢走 +100 元气！</span>
+            <span>✨ <strong>姑苏·画船听雨</strong> 末题逆风翻盘绝杀对手，胜率飙升至 84%！</span>
+            <!-- 无缝循环副本 -->
+            <span>🏆 <strong>杭州·林深</strong> 刚刚 10题全胜斩获 <span class="text-morandi-olive font-bold">1000 分</span>，独揽 200 元气奖池！</span>
+            <span>🔥 <strong>成都·辣椒战士</strong> 达成 <span class="text-morandi-terracotta font-bold">6 连胜</span> 晋升“黄金城市猎手”，正在擂台等待挑战！</span>
+            <span>⚡ <strong>北京·胡同百事通</strong> 仅用 1.6 秒秒杀“天坛祈年殿”，赢走 +100 元气！</span>
+            <span>✨ <strong>姑苏·画船听雨</strong> 末题逆风翻盘绝杀对手，胜率飙升至 84%！</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 核心双栏布局：左侧【我的元气能量金卡 + 段位荣誉】 / 右侧【1v1擂台对决预告卡】 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
+
+        <!-- 左侧（5列）：元气值资产中心 & 段位连胜 -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+          <!-- 【我的元气值】能量金卡 -->
+          <div class="bg-gradient-to-br from-[#FBF7EE] via-[#F6EDD9] to-[#EFE1C3] border border-morandi-sand/70 rounded-2xl p-4 sm:p-5 shadow-soft relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-morandi-sand text-white">我的元气值</span>
+              <span class="text-[11px] font-medium text-morandi-terracotta">参赛门槛 ≥ 100 点</span>
+            </div>
+
+            <div class="mt-3 flex items-baseline gap-2 relative">
+              <span class="text-2xl">⚡</span>
+              <span id="lobby-energy-big" class="font-display font-extrabold text-4xl sm:text-5xl text-morandi-ink tracking-tight">200</span>
+              <span class="text-xs font-bold text-morandi-muted">点可用</span>
+              <div id="lobby-energy-pop" class="absolute left-24 -top-2 pointer-events-none"></div>
+            </div>
+
+            <div class="mt-2.5 p-2.5 rounded-xl bg-white/75 border border-morandi-sand/40 text-[11px] text-morandi-ink leading-relaxed">
+              参赛消耗：<strong class="text-morandi-terracotta">100 元气/场</strong> ｜ 胜利奖励：<strong class="text-morandi-olive">+100 元气（净赚翻倍）</strong>
+            </div>
+
+            <!-- 每日免费领取按钮 + 救急补充 -->
+            <div class="mt-3.5 space-y-2">
+              <button id="btn-daily-claim" onclick="app.claimDailyEnergy()" class="soft-btn animate-pulse-sand w-full py-2.5 px-4 rounded-xl bg-morandi-sand text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-[#B28542] disabled:bg-morandi-border disabled:text-morandi-muted disabled:animate-none disabled:cursor-not-allowed">
+                <span>🎁</span>
+                <span id="daily-claim-text">领取每日免费 +100 元气</span>
+              </button>
+
+              <!-- 贴心救急补给条（当元气不足100点且今日已领时显示） -->
+              <div id="rescue-energy-box" class="hidden text-center">
+                <button onclick="app.claimRescueEnergy()" class="text-[11px] font-bold text-morandi-terracotta hover:underline">
+                  ⚡ 元气耗尽？点击领取「旅者补给包 +100 元气」继续挑战
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 玩家竞技段位与连胜统计卡片 -->
+          <div class="bg-white border border-morandi-border rounded-2xl p-4 sm:p-5 shadow-soft flex-1 flex flex-col justify-between">
+            <div class="flex items-center justify-between border-b border-morandi-border/70 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-morandi-canvas border border-morandi-border text-morandi-olive flex items-center justify-center text-lg">
+                  🧭
+                </div>
+                <div>
+                  <div class="text-[11px] text-morandi-muted">当前竞技段位</div>
+                  <div id="player-rank-title" class="font-bold text-sm sm:text-base text-morandi-ink">青铜探险家</div>
+                </div>
+              </div>
+              <div id="streak-badge" class="px-2.5 py-1 rounded-full bg-morandi-terracotta/10 border border-morandi-terracotta/30 text-morandi-terracotta font-bold text-xs">
+                🔥 当前连胜 0
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 pt-3 text-center">
+              <div class="bg-morandi-cream rounded-xl p-2.5 border border-morandi-border/60">
+                <div class="text-[10px] text-morandi-muted">累计胜场</div>
+                <div id="stat-wins" class="font-display font-extrabold text-lg text-morandi-olive mt-0.5">0</div>
+              </div>
+              <div class="bg-morandi-cream rounded-xl p-2.5 border border-morandi-border/60">
+                <div class="text-[10px] text-morandi-muted">对战总局</div>
+                <div id="stat-total" class="font-display font-extrabold text-lg text-morandi-ink mt-0.5">0</div>
+              </div>
+              <div class="bg-morandi-cream rounded-xl p-2.5 border border-morandi-border/60">
+                <div class="text-[10px] text-morandi-muted">历史胜率</div>
+                <div id="stat-winrate" class="font-display font-extrabold text-lg text-morandi-sand mt-0.5">0%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧（7列）：双人擂台对决预告卡 & 莫兰迪样画预览 -->
+        <div class="lg:col-span-7 bg-white border border-morandi-border rounded-2xl p-4 sm:p-6 shadow-soft-lg flex flex-col justify-between">
+          <!-- 顶部擂台标题 -->
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-morandi-meadow/15 text-morandi-olive mb-1">
+                1V1 实时城市知识排位赛
+              </span>
+              <h2 class="text-lg sm:text-2xl font-black tracking-tight text-morandi-ink">
+                100 元气入场 → 胜者独享 200 元气荣誉
+              </h2>
+            </div>
+            <div class="text-right shrink-0 bg-morandi-cream border border-morandi-border rounded-xl px-3 py-1.5">
+              <div class="text-[10px] text-morandi-muted">本局总奖池</div>
+              <div class="font-display font-extrabold text-base text-morandi-sand">⚡ 200</div>
+            </div>
+          </div>
+
+          <!-- 中央：【你（可自定义昵称） VS 神秘劲敌】擂台对决面板 + 莫兰迪风景样画 -->
+          <div class="my-4 bg-morandi-cream border border-morandi-border rounded-2xl p-3.5 sm:p-4 space-y-3.5">
+            <!-- 双方阵营对峙条 -->
+            <div class="grid grid-cols-11 items-center gap-2">
+              <!-- 我方阵营 -->
+              <div class="col-span-5 bg-white border border-morandi-border rounded-xl p-2.5 text-center">
+                <div class="w-11 h-11 mx-auto rounded-full bg-morandi-meadow text-white flex items-center justify-center font-bold text-base">
+                  我
+                </div>
+                <div class="mt-1.5 flex items-center justify-center gap-1">
+                  <input id="player-nickname-input" type="text" maxlength="8" value="探险家" onchange="app.updateNickname(this.value)" class="w-20 text-center font-bold text-xs sm:text-sm text-morandi-ink bg-morandi-cream border border-morandi-border rounded-md px-1.5 py-0.5 focus:outline-none focus:border-morandi-meadow" title="点击修改昵称" />
+                  <span class="text-[10px] text-morandi-muted" title="可编辑昵称">✎</span>
+                </div>
+                <div class="text-[10px] text-morandi-olive font-medium mt-1">入场 100 ⚡</div>
+              </div>
+
+              <!-- VS 徽章 -->
+              <div class="col-span-1 flex flex-col items-center justify-center">
+                <span class="font-display font-extrabold text-sm sm:text-base text-morandi-terracotta">VS</span>
+              </div>
+
+              <!-- 神秘劲敌阵营 -->
+              <div class="col-span-5 bg-white border border-morandi-border rounded-xl p-2.5 text-center">
+                <div class="w-11 h-11 mx-auto rounded-full bg-morandi-terracotta/90 text-white flex items-center justify-center text-xl">
+                  🎭
+                </div>
+                <div class="mt-1.5 font-bold text-xs sm:text-sm text-morandi-ink">神秘劲敌</div>
+                <div class="text-[10px] text-morandi-muted mt-1">随机匹配各地高手</div>
+              </div>
+            </div>
+
+            <!-- 莫兰迪绿野风景题卡预览（16:9 比例，带 STAGE 标签与右上角圆环） -->
+            <div class="relative rounded-2xl overflow-hidden border border-morandi-border cursor-pointer group" onclick="app.cycleLobbyPreview()" title="点击切换题库画作预览">
+              <div id="lobby-preview-art" class="w-full aspect-[16/9]">
+                <!-- 动态插入莫兰迪自然风景插画 -->
+              </div>
+              <!-- 左上角 STAGE 标签 -->
+              <div class="absolute top-2.5 left-3 px-2.5 py-0.5 rounded-full bg-white/85 backdrop-blur-xs text-[10px] font-display font-bold text-morandi-muted tracking-wider">
+                STAGE 01 / 10 · 题库预览
+              </div>
+              <!-- 右上角圆形数字徽章 -->
+              <div class="absolute top-2.5 right-3 w-8 h-8 rounded-full bg-white border-2 border-morandi-skyline flex items-center justify-center font-display font-extrabold text-xs text-morandi-ink">
+                10
+              </div>
+              <!-- 底部切换提示 -->
+              <div class="absolute bottom-2 right-3 px-2.5 py-0.5 rounded-full bg-morandi-ink/70 text-white text-[10px] font-medium opacity-90 group-hover:bg-morandi-terracotta transition-colors">
+                点击切换下一幅画作 🔄
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部：开战按钮与赛制说明 -->
+          <div class="space-y-2">
+            <button id="btn-start-pk" onclick="app.startMatchmaking()" class="soft-btn w-full py-3.5 sm:py-4 px-6 rounded-xl bg-morandi-terracotta text-white font-bold text-base sm:text-lg shadow-soft hover:bg-[#934F39] flex items-center justify-center gap-2 disabled:bg-morandi-border disabled:text-morandi-muted disabled:cursor-not-allowed">
+              <span>⚔️</span>
+              <span id="btn-start-text">立即匹配对手开战（消耗 100 元气）</span>
+            </button>
+            <div class="flex items-center justify-between text-[11px] text-morandi-muted px-1">
+              <span>📋 每局 <strong>10 题</strong> · 每题限时 <strong>10 秒</strong></span>
+              <span>⚖️ 答对 <strong>+100分</strong> / 答错或超时 <strong>-100分</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 视图 2: 匹配对手中 (MATCHMAKING) ==================== -->
+    <section id="view-matching" class="hidden">
+      <div class="bg-white border border-morandi-border rounded-2xl p-8 sm:p-10 shadow-soft-lg text-center max-w-lg mx-auto space-y-6">
+        <div class="relative w-24 h-24 mx-auto flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-2 border-morandi-meadow radar-ring"></div>
+          <div class="absolute inset-0 rounded-full border-2 border-morandi-sand radar-ring-delay"></div>
+          <div class="w-[72px] h-[72px] rounded-full bg-morandi-canvas border-2 border-morandi-meadow text-morandi-olive flex items-center justify-center text-3xl z-10">
+            🧭
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <h3 class="text-xl sm:text-2xl font-black text-morandi-ink">正在搜寻各地识城高手...</h3>
+          <p id="matching-status-text" class="text-xs sm:text-sm text-morandi-muted">奖池已锁定 200 元气值 · 正在抽取 10 幅城市风景画作</p>
+        </div>
+
+        <div class="flex items-center justify-center gap-4 pt-1">
+          <div class="flex-1 bg-morandi-cream border border-morandi-border rounded-2xl p-3.5">
+            <div class="w-12 h-12 mx-auto rounded-full bg-morandi-meadow text-white flex items-center justify-center text-lg font-bold">我</div>
+            <div id="match-player-name" class="font-bold text-sm mt-2 text-morandi-ink">探险家</div>
+            <div class="text-[11px] text-morandi-olive font-medium mt-0.5">已押注 100 ⚡</div>
+          </div>
+
+          <div class="font-display font-extrabold text-xl text-morandi-terracotta">VS</div>
+
+          <div class="flex-1 bg-morandi-cream border border-morandi-border rounded-2xl p-3.5">
+            <div id="match-opp-avatar" class="w-12 h-12 mx-auto rounded-full bg-morandi-canvas text-morandi-muted border border-morandi-border flex items-center justify-center text-xl font-bold animate-pulse">?</div>
+            <div id="match-opp-name" class="font-bold text-sm mt-2 text-morandi-muted">匹配中...</div>
+            <div id="match-opp-title" class="text-[11px] text-morandi-muted mt-0.5">搜寻同段位对手</div>
+          </div>
+        </div>
+
+        <button onclick="app.cancelMatchmaking()" class="text-xs font-medium text-morandi-muted hover:text-morandi-ink underline">
+          取消匹配返回首页
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== 视图 3: 双人PK实战中 (BATTLE) ==================== -->
+    <section id="view-battle" class="hidden space-y-3.5 sm:space-y-4">
+      <!-- 顶部双人对战记分与情绪挑衅栏（还原参考图顶部清爽布局） -->
+      <div class="bg-white border border-morandi-border rounded-2xl p-3 sm:p-4 shadow-soft">
+        <div class="flex items-center justify-between gap-2">
+          <!-- 我方记分 -->
+          <div class="flex items-center gap-2.5 flex-1 min-w-0">
+            <div class="relative shrink-0">
+              <div class="w-11 h-11 rounded-full bg-morandi-meadow text-white flex items-center justify-center font-bold text-base">
+                我
+              </div>
+              <span id="player-status-badge" class="hidden absolute -bottom-1 -right-1 text-[10px] w-5 h-5 rounded-full bg-morandi-olive text-white border-2 border-white flex items-center justify-center font-bold">✓</span>
+            </div>
+            <div class="min-w-0 relative">
+              <div class="flex items-center gap-1.5">
+                <span id="battle-player-name" class="text-xs font-bold text-morandi-ink truncate">探险家</span>
+                <span id="player-combo-tag" class="hidden text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-morandi-sand/20 text-morandi-sand">🔥2连击</span>
+              </div>
+              <div class="flex items-baseline gap-1 mt-0.5">
+                <span id="player-score" class="font-display font-extrabold text-2xl text-morandi-olive">0</span>
+                <span class="text-[10px] text-morandi-muted">分</span>
+              </div>
+              <div id="player-pop-anchor" class="absolute left-0 -top-2 pointer-events-none"></div>
+            </div>
+          </div>
+
+          <!-- 中央题号与实时战况 -->
+          <div class="flex flex-col items-center shrink-0 px-2">
+            <span class="text-[10px] font-display font-bold px-2.5 py-0.5 rounded-full bg-morandi-canvas border border-morandi-border text-morandi-olive">
+              ROUND <span id="q-current">01</span> / 10
+            </span>
+            <span id="battle-lead-hint" class="text-[11px] font-medium text-morandi-muted mt-1">
+              均势开局
+            </span>
+          </div>
+
+          <!-- 对手记分与动态情绪气泡 -->
+          <div class="flex items-center justify-end gap-2.5 flex-1 min-w-0 text-right">
+            <div class="min-w-0 relative">
+              <div class="flex items-center justify-end gap-1">
+                <span id="opp-name" class="text-xs font-bold text-morandi-ink truncate">成都·辣椒战士</span>
+              </div>
+              <div class="flex items-baseline justify-end gap-1 mt-0.5">
+                <span id="opp-score" class="font-display font-extrabold text-2xl text-morandi-terracotta">0</span>
+                <span class="text-[10px] text-morandi-muted">分</span>
+              </div>
+              <div id="opp-pop-anchor" class="absolute right-0 -top-2 pointer-events-none"></div>
+            </div>
+            <div class="relative shrink-0">
+              <div id="opp-avatar" class="w-11 h-11 rounded-full bg-morandi-terracotta/90 text-white flex items-center justify-center text-xl">
+                🌶️
+              </div>
+              <span id="opp-status-pill" class="absolute -bottom-2 right-0 text-[10px] px-2 py-0.5 rounded-full bg-morandi-cream text-morandi-muted border border-morandi-border font-medium whitespace-nowrap">
+                思考中...
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主对战区：左侧莫兰迪自然风景画布 / 右侧4选1抢答 -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+        <!-- 左侧莫兰迪自然风景舞台（严格复刻参考图视觉布局） -->
+        <div class="md:col-span-7 bg-white border border-morandi-border rounded-2xl p-3 sm:p-4 shadow-soft flex flex-col justify-between">
+          <!-- 画布容器（16:9 比例，内置 STAGE 胶囊与右上角圆形倒计时环） -->
+          <div class="relative w-full aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden border border-morandi-border bg-morandi-canvas">
+            <!-- 动态渲染莫兰迪风景插画 -->
+            <div id="art-canvas" class="w-full h-full"></div>
+
+            <!-- 左上角半透明胶囊标签 STAGE 01 / 10 -->
+            <div class="absolute top-3 left-3.5 px-3 py-1 rounded-full bg-white/85 backdrop-blur-xs shadow-xs flex items-center gap-1.5">
+              <span id="stage-label" class="font-display font-bold text-[11px] text-morandi-muted tracking-wider">STAGE 01 / 10</span>
+              <span class="text-morandi-border">|</span>
+              <span id="q-category" class="text-[11px] font-bold text-morandi-olive">地标建筑</span>
+            </div>
+
+            <!-- 右上角圆形苔藓绿边框倒计时徽章（环形进度 + 10 -> 0 跳动） -->
+            <div id="timer-badge" class="absolute top-2.5 right-3.5 w-11 h-11 rounded-full bg-white shadow-xs flex items-center justify-center">
+              <svg class="w-11 h-11 -rotate-90" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="#E8EDE2" stroke-width="3.5" />
+                <circle id="timer-ring-progress" cx="22" cy="22" r="18" fill="none" stroke="#8C9E8C" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="0" />
+              </svg>
+              <span id="timer-seconds" class="absolute font-display font-extrabold text-sm text-morandi-ink">10</span>
+            </div>
+          </div>
+
+          <div class="mt-2.5 flex items-center justify-between px-1 text-xs text-morandi-muted">
+            <span>观察画面中央主体特征，快速锁定所属城市</span>
+            <span id="opp-taunt-bar" class="text-[11px] font-medium text-morandi-terracotta truncate max-w-[180px]"></span>
+          </div>
+        </div>
+
+        <!-- 右侧4选1抢答选项与揭晓百科 -->
+        <div class="md:col-span-5 flex flex-col justify-between gap-3">
+          <div class="bg-white border border-morandi-border rounded-2xl p-4 shadow-soft flex-1 flex flex-col justify-center">
+            <div class="text-xs font-medium text-morandi-muted mb-3 flex items-center justify-between">
+              <span>请选择所属城市（对 +100 / 错 -100）</span>
+              <span id="both-answered-hint" class="hidden text-morandi-olive font-bold">双方已作答</span>
+            </div>
+
+            <div id="options-grid" class="grid grid-cols-1 gap-2.5">
+              <!-- 动态生成 4 个莫兰迪按钮 -->
+            </div>
+          </div>
+
+          <!-- 答题揭晓与城市文化小百科（固定高度，避免作答与揭晓切换时面板跳动） -->
+          <div id="trivia-box" class="bg-morandi-cream border border-morandi-border rounded-2xl p-3.5 shadow-soft h-[100px] flex items-center overflow-hidden">
+            <div id="trivia-placeholder" class="flex items-center gap-2.5 text-xs text-morandi-muted w-full">
+              <span class="text-lg shrink-0">🌿</span>
+              <span>作答揭晓后，将在此展示城市正解与文化小百科</span>
+            </div>
+            <div id="trivia-content" class="hidden flex items-start gap-2.5 w-full">
+              <span class="text-lg shrink-0">🌿</span>
+              <div class="space-y-1 min-w-0 flex-1">
+                <div class="text-xs font-bold text-morandi-ink flex items-center gap-2">
+                  <span class="truncate">正解：<span id="trivia-title" class="text-morandi-olive">北京 · 天坛祈年殿</span></span>
+                  <span id="trivia-result-tag" class="px-2 py-0.5 rounded-full text-[10px] bg-morandi-meadow text-white font-bold shrink-0">回答正确 +100</span>
+                </div>
+                <p id="trivia-desc" class="text-xs text-morandi-muted leading-relaxed line-clamp-2"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 视图 4: 荣誉结算与逐题复盘 (RESULT) ==================== -->
+    <section id="view-result" class="hidden space-y-5">
+      <div class="bg-white border border-morandi-border rounded-2xl p-5 sm:p-8 shadow-soft-lg text-center">
+        <div id="result-banner" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-morandi-canvas border border-morandi-border text-morandi-olive font-bold text-sm mb-3">
+          <span id="result-status-title">🏆 擂台获胜！</span>
+        </div>
+
+        <h2 id="result-headline" class="text-2xl sm:text-3xl font-black tracking-tight text-morandi-ink">
+          技压群雄，独享 200 元气荣誉！
+        </h2>
+
+        <!-- 元气值结算明细卡 -->
+        <div id="result-energy-card" class="mt-4 inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl border border-morandi-sand/60 bg-[#FBF7EE]">
+          <span class="text-2xl">⚡</span>
+          <div class="text-left">
+            <div class="text-[11px] text-morandi-muted">本局元气值结算明细</div>
+            <div id="result-energy-delta" class="font-display font-extrabold text-base sm:text-lg text-morandi-sand">胜利奖励 +100 元气 (当前余额: 300)</div>
+          </div>
+        </div>
+
+        <!-- 双方总分对比 -->
+        <div class="grid grid-cols-2 gap-3 sm:gap-6 max-w-md mx-auto mt-6">
+          <div class="bg-morandi-cream border border-morandi-border rounded-2xl p-4">
+            <span id="result-player-label" class="text-xs font-medium text-morandi-muted">探险家（我方）</span>
+            <div id="result-player-score" class="font-display font-extrabold text-3xl text-morandi-olive mt-1">800</div>
+            <div id="result-player-accuracy" class="text-[11px] text-morandi-muted mt-1">答对 9 / 10 题</div>
+          </div>
+          <div class="bg-morandi-cream border border-morandi-border rounded-2xl p-4">
+            <span id="result-opp-name" class="text-xs font-medium text-morandi-muted">对手得分</span>
+            <div id="result-opp-score" class="font-display font-extrabold text-3xl text-morandi-terracotta mt-1">600</div>
+            <div id="result-opp-accuracy" class="text-[11px] text-morandi-muted mt-1">答对 8 / 10 题</div>
+          </div>
+        </div>
+
+        <!-- 再战/返回大厅按钮 -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 max-w-md mx-auto">
+          <button onclick="app.startMatchmaking()" class="soft-btn w-full sm:flex-1 py-3.5 px-5 rounded-xl bg-morandi-terracotta text-white font-bold text-sm shadow-soft hover:bg-[#934F39]">
+            ⚔️ 乘胜追击（再来一局）
+          </button>
+          <button onclick="app.goHome()" class="soft-btn w-full sm:w-auto py-3.5 px-5 rounded-xl border border-morandi-border bg-white text-morandi-ink font-bold text-sm hover:bg-morandi-cream">
+            返回擂台首页
+          </button>
+        </div>
+      </div>
+
+      <!-- 本局 10 道题目缩略插画与答案复盘列表 -->
+      <div class="bg-white border border-morandi-border rounded-2xl p-4 sm:p-6 shadow-soft">
+        <h3 class="font-bold text-base text-morandi-ink mb-3 flex items-center gap-2">
+          <span>🖼️</span>
+          <span>本局 10 题画作与答案复盘</span>
+        </h3>
+        <div id="review-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="border-t border-morandi-border/80 py-3 px-4 text-center text-[11px] text-morandi-muted">
+    看图猜城市 · 莫兰迪绿野美术馆双人PK版 | 每局10题 · 10秒限时 · 每日免费领100元气
+  </footer>
+
+  <!-- ==================== PK规则说明弹窗 ==================== -->
+  <div id="rules-modal" class="hidden fixed inset-0 z-50 bg-morandi-ink/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-morandi-border rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-soft-lg space-y-4">
+      <div class="flex items-center justify-between border-b border-morandi-border pb-3">
+        <h3 class="font-bold text-lg text-morandi-ink flex items-center gap-2">📜 双人PK擂台规则说明</h3>
+        <button onclick="app.toggleRulesModal(false)" class="w-7 h-7 rounded-full border border-morandi-border flex items-center justify-center text-xs text-morandi-muted hover:bg-morandi-cream">✕</button>
+      </div>
+      <ul class="space-y-2.5 text-xs sm:text-sm text-morandi-ink leading-relaxed">
+        <li class="flex items-start gap-2">
+          <span class="font-bold text-morandi-olive">01.</span>
+          <span><strong>题库特色：</strong>24幅莫兰迪豆绿/米白治愈系极简风景插画，涵盖<strong>地标建筑、代表美食、代表植物与动物人文</strong>四大类别。</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="font-bold text-morandi-terracotta">02.</span>
+          <span><strong>10题10秒抢答：</strong>每局随机抽取 <strong>10 道题</strong>，每题严格限时 <strong>10 秒</strong>。答对 <strong>+100 分</strong>，答错或超时 <strong>-100 分</strong>（允许负分）。</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="font-bold text-morandi-sand">03.</span>
+          <span><strong>元气值规则：</strong>参赛必须拥有 <strong>≥ 100 点元气值</strong>，每天免费赠送 <strong>100 点元气值</strong>。胜利净赚 <strong>+100 元气</strong>，平局退还入场元气，落败扣除 100 元气。</span>
+        </li>
+      </ul>
+      <div class="pt-2 flex items-center justify-between gap-2">
+        <button onclick="app.debugResetDaily()" class="text-[11px] text-morandi-muted hover:text-morandi-ink underline">
+          [重置今日领取状态]
+        </button>
+        <button onclick="app.toggleRulesModal(false)" class="soft-btn px-5 py-2 rounded-xl bg-morandi-meadow text-white font-bold text-xs">
+          我明白了
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 题目反馈弹窗 ==================== -->
+  <div id="feedback-modal" class="hidden fixed inset-0 z-50 bg-morandi-ink/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-morandi-border rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-soft-lg space-y-4">
+      <div class="flex items-center justify-between border-b border-morandi-border pb-3">
+        <h3 class="font-bold text-base sm:text-lg text-morandi-ink flex items-center gap-2">💬 题目反馈</h3>
+        <button onclick="app.closeFeedbackModal()" class="w-7 h-7 rounded-full border border-morandi-border flex items-center justify-center text-xs text-morandi-muted hover:bg-morandi-cream">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between gap-2 bg-morandi-cream border border-morandi-border rounded-xl px-3 py-2">
+          <span id="feedback-question-label" class="text-xs font-bold text-morandi-ink truncate">#1 北京 · 天坛祈年殿</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-morandi-sand/15 text-morandi-sand shrink-0">提交赠 +20 ⚡</span>
+        </div>
+        <div>
+          <label for="feedback-input" class="block text-xs font-medium text-morandi-muted mb-1.5">
+            对这道题的画作、城市描述或答案有任何建议，欢迎告诉我们：
+          </label>
+          <textarea id="feedback-input" rows="4" maxlength="300" placeholder="请输入您的反馈内容（如画作特征建议、答案勘误、趣味科普补充等）..." class="w-full rounded-xl border border-morandi-border bg-morandi-cream p-3 text-xs sm:text-sm text-morandi-ink placeholder:text-morandi-muted/70 focus:outline-none focus:border-morandi-meadow resize-none select-text"></textarea>
+        </div>
+      </div>
+      <div class="pt-1 flex items-center justify-end gap-2.5">
+        <button onclick="app.closeFeedbackModal()" class="soft-btn px-4 py-2 rounded-xl border border-morandi-border bg-white text-morandi-muted font-bold text-xs hover:bg-morandi-cream">
+          取消
+        </button>
+        <button onclick="app.submitFeedback()" class="soft-btn px-5 py-2 rounded-xl bg-morandi-terracotta text-white font-bold text-xs hover:bg-[#934F39]">
+          提交反馈
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1. Web Audio API 纯代码合成音效引擎
+     * ============================================================================
+     */
+    class SoundEngine {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type = 'sine', duration = 0.14, gainVal = 0.1, delay = 0) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime + delay;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(gainVal, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration);
+        } catch (e) {}
+      }
+
+      click() { this.playTone(580, 'sine', 0.07, 0.08); }
+      energy() {
+        this.playTone(523.25, 'sine', 0.12, 0.12, 0);
+        this.playTone(783.99, 'sine', 0.16, 0.12, 0.07);
+        this.playTone(1046.50, 'sine', 0.24, 0.12, 0.14);
+      }
+      correct() {
+        this.playTone(523.25, 'triangle', 0.14, 0.12, 0);
+        this.playTone(659.25, 'triangle', 0.14, 0.12, 0.08);
+        this.playTone(783.99, 'triangle', 0.24, 0.14, 0.16);
+      }
+      wrong() {
+        this.playTone(220, 'triangle', 0.16, 0.1, 0);
+        this.playTone(175, 'triangle', 0.24, 0.1, 0.11);
+      }
+      tick() { this.playTone(880, 'sine', 0.045, 0.06, 0); }
+      victory() {
+        [523.25, 659.25, 783.99, 1046.50].forEach((n, i) => this.playTone(n, 'triangle', 0.22, 0.12, i * 0.1));
+      }
+      defeat() {
+        [392.00, 349.23, 311.13, 261.63].forEach((n, i) => this.playTone(n, 'sine', 0.24, 0.1, i * 0.13));
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 2. 莫兰迪绿野自然风景舞台渲染器 & 24幅极简几何面块城市题库
+     * 严格统一视觉语言：
+     * - 浅豆绿米白天空 (#E8EDE2)
+     * - 右上角无描边暖杏太阳 (#EAD2A0)
+     * - 左上角两只极简折线飞鸟 (#99AB96)
+     * - 中远景柔和莫兰迪山丘曲线 (#D5DFCC) + 两侧雾霾绿扁平矩形天际线 (#B6C5B1)
+     * - 前景深苔藓绿平缓草地 (#7C937E) + 浅色细波浪草纹 + 左右对称双球墨绿灌木丛 (#46604D)
+     * ============================================================================
+     */
+    function wrapMorandiScene(subjectSvg) {
+      return `
+        <svg viewBox="0 0 400 225" class="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+          <!-- 1. 浅豆绿米白天空底色 -->
+          <rect width="400" height="225" fill="#E8EDE2"/>
+
+          <!-- 2. 右上角无描边暖杏太阳 -->
+          <circle cx="312" cy="56" r="22" fill="#EAD2A0"/>
+
+          <!-- 3. 左上角两只极简折线飞鸟 -->
+          <path d="M56,64 Q61,59 66,64 Q71,59 76,64" fill="none" stroke="#99AB96" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M84,56 Q88,52 92,56 Q96,52 100,56" fill="none" stroke="#99AB96" stroke-width="1.6" stroke-linecap="round"/>
+
+          <!-- 4. 中远景柔和莫兰迪山丘曲线 -->
+          <path d="M0,148 Q95,112 195,148 T400,136 L400,192 L0,192 Z" fill="#D5DFCC"/>
+
+          <!-- 5. 两侧低饱和雾霾绿扁平矩形城市天际线剪影 -->
+          <!-- 左侧楼群 -->
+          <rect x="20" y="138" width="16" height="54" fill="#B6C5B1"/>
+          <rect x="40" y="124" width="18" height="68" fill="#B6C5B1"/>
+          <rect x="62" y="146" width="15" height="46" fill="#C4D1BF"/>
+          <!-- 右侧楼群 -->
+          <rect x="318" y="142" width="16" height="50" fill="#C4D1BF"/>
+          <rect x="338" y="126" width="18" height="66" fill="#B6C5B1"/>
+          <rect x="360" y="140" width="16" height="52" fill="#B6C5B1"/>
+
+          <!-- 6. 中央核心主体插画（矗立于草地之上） -->
+          ${subjectSvg}
+
+          <!-- 7. 前景深苔藓绿平缓草地与浅色细波浪草纹 -->
+          <rect x="0" y="190" width="400" height="35" fill="#7C937E"/>
+          <path d="M0,206 Q100,200 200,206 T400,204" fill="none" stroke="#A7B9A8" stroke-width="1.2"/>
+          <rect x="0" y="221" width="400" height="4" fill="#46604D"/>
+
+          <!-- 8. 草地左右两侧对称分布深墨绿圆润双球灌木丛 -->
+          <!-- 左侧双球灌木 -->
+          <rect x="41" y="182" width="2.5" height="10" fill="#3B5141"/>
+          <rect x="57" y="184" width="2.5" height="8" fill="#3B5141"/>
+          <circle cx="42" cy="176" r="11" fill="#46604D"/>
+          <circle cx="58" cy="179" r="9" fill="#58705A"/>
+          <!-- 右侧双球灌木 -->
+          <rect x="341" y="184" width="2.5" height="8" fill="#3B5141"/>
+          <rect x="357" y="182" width="2.5" height="10" fill="#3B5141"/>
+          <circle cx="342" cy="179" r="9" fill="#58705A"/>
+          <circle cx="358" cy="176" r="11" fill="#46604D"/>
+        </svg>
+      `;
+    }
+
+    const ART_QUESTIONS = [
+      // ==================== 一、城市地标建筑（12题） ====================
+      {
+        id: 'bj_tiantan',
+        city: '北京',
+        category: '地标建筑',
+        subject: '天坛祈年殿',
+        options: ['北京', '南京', '西安', '洛阳'],
+        desc: '三重青石板蓝灰琉璃瓦攒尖顶、赤陶红殿身与三层奶油象牙白汉白玉祈谷坛基座。',
+        subjectSvg: `
+          <!-- 宝顶 -->
+          <circle cx="200" cy="48" r="3.5" fill="#C29552"/>
+          <!-- 三重檐攒尖顶 -->
+          <polygon points="200,51 174,73 226,73" fill="#58705A"/>
+          <polygon points="200,70 164,95 236,95" fill="#8C9E8C"/>
+          <polygon points="200,91 152,119 248,119" fill="#58705A"/>
+          <!-- 赤陶殿身与金柱 -->
+          <rect x="168" y="119" width="64" height="23" fill="#A65E46"/>
+          <rect x="182" y="119" width="3" height="23" fill="#EAD2A0"/>
+          <rect x="198.5" y="119" width="3" height="23" fill="#EAD2A0"/>
+          <rect x="215" y="119" width="3" height="23" fill="#EAD2A0"/>
+          <!-- 三层奶油白汉白玉台基 -->
+          <rect x="152" y="142" width="96" height="14" fill="#F2EFE9"/>
+          <rect x="138" y="156" width="124" height="16" fill="#E6E1D6"/>
+          <rect x="124" y="172" width="152" height="18" fill="#F2EFE9"/>
+        `
+      },
+      {
+        id: 'sh_pearl',
+        city: '上海',
+        category: '地标建筑',
+        subject: '东方明珠广播电视塔',
+        options: ['上海', '广州', '天津', '深圳'],
+        desc: '赤陶红棕与奶油象牙白相间的双球体塔身，标志性三根斜向支撑立柱矗立浦江之畔。',
+        subjectSvg: `
+          <!-- 发射天线 -->
+          <rect x="198.5" y="26" width="3" height="26" fill="#A65E46"/>
+          <circle cx="200" cy="54" r="6" fill="#A65E46"/>
+          <!-- 塔柱 -->
+          <rect x="194" y="60" width="4" height="86" fill="#F2EFE9"/>
+          <rect x="202" y="60" width="4" height="86" fill="#F2EFE9"/>
+          <!-- 上球体 -->
+          <circle cx="200" cy="82" r="13" fill="#A65E46"/>
+          <rect x="187" y="80" width="26" height="4" fill="#F2EFE9"/>
+          <!-- 下大球体 -->
+          <circle cx="200" cy="132" r="20" fill="#A65E46"/>
+          <rect x="180" y="130" width="40" height="4.5" fill="#F2EFE9"/>
+          <!-- 三根斜向支撑巨柱 -->
+          <polygon points="184,146 192,146 172,190 162,190" fill="#F2EFE9"/>
+          <polygon points="208,146 216,146 238,190 228,190" fill="#F2EFE9"/>
+          <polygon points="196,151 204,151 204,190 196,190" fill="#C98A7A"/>
+        `
+      },
+      {
+        id: 'gz_canton_tower',
+        city: '广州',
+        category: '地标建筑',
+        subject: '广州塔“小蛮腰”',
+        options: ['广州', '上海', '香港', '深圳'],
+        desc: '上下宽、中间纤细收腰的双曲面镂空塔身，交织砂岩暖金与赤陶斜向网状格栅。',
+        subjectSvg: `
+          <!-- 塔尖天线 -->
+          <rect x="198.5" y="24" width="3" height="30" fill="#A65E46"/>
+          <!-- 小蛮腰收腰主体 -->
+          <path d="M180,54 Q194,118 172,190 L228,190 Q206,118 220,54 Z" fill="#F2EFE9"/>
+          <!-- 中段赤陶格栅层 -->
+          <path d="M184,82 Q195,118 181,154 L219,154 Q205,118 216,82 Z" fill="#A65E46"/>
+          <!-- 标志性交叉菱形网线 -->
+          <line x1="180" y1="54" x2="225" y2="186" stroke="#C29552" stroke-width="1.8"/>
+          <line x1="220" y1="54" x2="175" y2="186" stroke="#C29552" stroke-width="1.8"/>
+          <line x1="183" y1="88" x2="222" y2="162" stroke="#EAD2A0" stroke-width="1.5"/>
+          <line x1="217" y1="88" x2="178" y2="162" stroke="#EAD2A0" stroke-width="1.5"/>
+        `
+      },
+      {
+        id: 'xa_dayanta',
+        city: '西安',
+        category: '地标建筑',
+        subject: '大雁塔七层方形古塔',
+        options: ['西安', '洛阳', '太原', '开封'],
+        desc: '层层内收的方形砂岩暖金楼阁式砖塔，塔刹攒尖，古朴庄严屹立长安古城。',
+        subjectSvg: `
+          <!-- 塔刹 -->
+          <polygon points="200,32 193,48 207,48" fill="#A65E46"/>
+          <!-- 七层逐级内收方形塔身 -->
+          <rect x="184" y="48" width="32" height="17" fill="#C29552"/>
+          <rect x="180" y="66" width="40" height="18" fill="#B58644"/>
+          <rect x="176" y="85" width="48" height="19" fill="#C29552"/>
+          <rect x="172" y="105" width="56" height="20" fill="#B58644"/>
+          <rect x="167" y="126" width="66" height="21" fill="#C29552"/>
+          <rect x="162" y="148" width="76" height="22" fill="#B58644"/>
+          <rect x="156" y="171" width="88" height="19" fill="#C29552"/>
+          <!-- 券门剪影 -->
+          <path d="M194,190 L194,178 A6,6 0 0,1 206,178 L206,190 Z" fill="#8C6D46"/>
+        `
+      },
+      {
+        id: 'wh_yellow_crane',
+        city: '武汉',
+        category: '地标建筑',
+        subject: '江南名楼黄鹤楼',
+        options: ['武汉', '南昌', '岳阳', '南京'],
+        desc: '五层层层飞檐翘角、砂岩暖金与赤陶交相辉映的宝塔式楼阁，屹立长江蛇山之巅。',
+        subjectSvg: `
+          <polygon points="200,32 195,46 205,46" fill="#C29552"/>
+          <!-- 四重飞檐翘角 -->
+          <path d="M174,62 Q200,46 226,62 L218,67 L182,67 Z" fill="#C29552"/>
+          <rect x="184" y="67" width="32" height="13" fill="#A65E46"/>
+          <path d="M164,94 Q200,76 236,94 L226,100 L174,100 Z" fill="#C29552"/>
+          <rect x="176" y="100" width="48" height="15" fill="#A65E46"/>
+          <path d="M152,130 Q200,110 248,130 L236,136 L164,136 Z" fill="#C29552"/>
+          <rect x="168" y="136" width="64" height="17" fill="#A65E46"/>
+          <path d="M140,168 Q200,146 260,168 L246,174 L154,174 Z" fill="#C29552"/>
+          <!-- 奶油白台基 -->
+          <rect x="154" y="174" width="92" height="16" fill="#F2EFE9"/>
+        `
+      },
+      {
+        id: 'ls_potala',
+        city: '拉萨',
+        category: '地标建筑',
+        subject: '布达拉宫红白宫殿群',
+        options: ['拉萨', '西宁', '日喀则', '香格里拉'],
+        desc: '依玛布日山而建的阶梯式雪域宫殿群，中心赤陶红宫庄严巍峨，两侧奶油白宫层叠展开。',
+        subjectSvg: `
+          <!-- 山体底座 -->
+          <polygon points="108,190 132,144 268,144 292,190" fill="#B6C5B1"/>
+          <!-- 左侧白宫阶梯 -->
+          <rect x="134" y="114" width="44" height="32" fill="#F2EFE9"/>
+          <rect x="122" y="132" width="36" height="24" fill="#E6E1D6"/>
+          <!-- 右侧白宫阶梯 -->
+          <rect x="222" y="114" width="44" height="32" fill="#F2EFE9"/>
+          <rect x="242" y="132" width="36" height="24" fill="#E6E1D6"/>
+          <!-- 中央红宫与金顶 -->
+          <rect x="174" y="76" width="52" height="68" fill="#A65E46"/>
+          <rect x="182" y="70" width="36" height="6" fill="#C29552"/>
+          <!-- 之字形登宫石阶 -->
+          <polygon points="154,146 246,146 260,190 140,190" fill="#F2EFE9"/>
+          <line x1="162" y1="158" x2="238" y2="170" stroke="#A65E46" stroke-width="2.5"/>
+          <line x1="238" y1="170" x2="152" y2="184" stroke="#A65E46" stroke-width="2.5"/>
+        `
+      },
+      {
+        id: 'cd_anshun_bridge',
+        city: '成都',
+        category: '地标建筑',
+        subject: '安顺廊桥与锦江波光',
+        options: ['成都', '绍兴', '凤凰', '杭州'],
+        desc: '横跨锦江之上的三孔拱桥与重檐飞角川西廊亭，桥下碧水悠悠，古韵十足。',
+        subjectSvg: `
+          <!-- 廊桥亭台屋顶 -->
+          <polygon points="148,108 200,88 252,108" fill="#58705A"/>
+          <polygon points="122,124 200,104 278,124" fill="#A65E46"/>
+          <!-- 廊桥木构柱廊 -->
+          <rect x="132" y="124" width="136" height="20" fill="#F2EFE9"/>
+          <rect x="148" y="124" width="4" height="20" fill="#A65E46"/>
+          <rect x="174" y="124" width="4" height="20" fill="#A65E46"/>
+          <rect x="200" y="124" width="4" height="20" fill="#A65E46"/>
+          <rect x="226" y="124" width="4" height="20" fill="#A65E46"/>
+          <rect x="248" y="124" width="4" height="20" fill="#A65E46"/>
+          <!-- 三孔石拱桥基 -->
+          <path d="M104,144 L296,144 L296,184 L264,184 A18,18 0 0,0 228,184 L218,184 A18,18 0 0,0 182,184 L172,184 A18,18 0 0,0 136,184 L104,184 Z" fill="#C29552"/>
+          <!-- 锦江水面 -->
+          <rect x="96" y="182" width="208" height="8" fill="#8C9E8C"/>
+        `
+      },
+      {
+        id: 'cq_hongyadong',
+        city: '重庆',
+        category: '地标建筑',
+        subject: '洪崖洞依山吊脚楼',
+        options: ['重庆', '凤凰', '贵阳', '成都'],
+        desc: '依悬崖峭壁层叠而建的巴渝吊脚楼群，砂岩暖金灯火与赤陶坡屋顶错落有致。',
+        subjectSvg: `
+          <!-- 顶层阁楼 -->
+          <polygon points="200,48 168,68 232,68" fill="#A65E46"/>
+          <rect x="174" y="68" width="52" height="22" fill="#C29552"/>
+          <!-- 中层吊脚楼 -->
+          <polygon points="200,86 150,108 250,108" fill="#A65E46"/>
+          <rect x="156" y="108" width="88" height="26" fill="#EAD2A0"/>
+          <!-- 底层吊脚楼与悬空木柱 -->
+          <polygon points="200,128 134,150 266,150" fill="#A65E46"/>
+          <rect x="142" y="150" width="116" height="24" fill="#C29552"/>
+          <!-- 吊脚支柱 -->
+          <rect x="154" y="174" width="5" height="16" fill="#58705A"/>
+          <rect x="184" y="174" width="5" height="16" fill="#58705A"/>
+          <rect x="212" y="174" width="5" height="16" fill="#58705A"/>
+          <rect x="242" y="174" width="5" height="16" fill="#58705A"/>
+        `
+      },
+      {
+        id: 'nj_zhongshan',
+        city: '南京',
+        category: '地标建筑',
+        subject: '中山陵博爱牌坊与石阶',
+        options: ['南京', '北京', '武汉', '广州'],
+        desc: '庄严肃穆的奶油白与青石板蓝灰配色，三门牌坊后方层层石阶直通紫金山麓。',
+        subjectSvg: `
+          <!-- 远方祭堂剪影 -->
+          <polygon points="200,56 172,72 228,72" fill="#58705A"/>
+          <rect x="178" y="72" width="44" height="18" fill="#F2EFE9"/>
+          <!-- 层层向上延伸的石阶 -->
+          <polygon points="164,90 236,90 268,190 132,190" fill="#F2EFE9"/>
+          <line x1="158" y1="112" x2="242" y2="112" stroke="#8C9E8C" stroke-width="2"/>
+          <line x1="150" y1="136" x2="250" y2="136" stroke="#8C9E8C" stroke-width="2"/>
+          <line x1="142" y1="162" x2="258" y2="162" stroke="#8C9E8C" stroke-width="2"/>
+          <!-- 前景博爱三门牌坊 -->
+          <rect x="154" y="138" width="92" height="10" fill="#58705A"/>
+          <rect x="162" y="148" width="8" height="42" fill="#F2EFE9"/>
+          <rect x="184" y="148" width="8" height="42" fill="#F2EFE9"/>
+          <rect x="208" y="148" width="8" height="42" fill="#F2EFE9"/>
+          <rect x="230" y="148" width="8" height="42" fill="#F2EFE9"/>
+        `
+      },
+      {
+        id: 'hz_leifeng',
+        city: '杭州',
+        category: '地标建筑',
+        subject: '西湖雷峰塔与碧波',
+        options: ['杭州', '苏州', '无锡', '镇江'],
+        desc: '五层八面重檐砂岩暖金古塔屹立夕照山巅，塔前西湖水面微波荡漾，诗画江南尽现。',
+        subjectSvg: `
+          <!-- 塔刹 -->
+          <polygon points="200,34 196,48 204,48" fill="#A65E46"/>
+          <!-- 五层重檐古塔 -->
+          <polygon points="200,48 180,62 220,62" fill="#A65E46"/>
+          <rect x="184" y="62" width="32" height="14" fill="#C29552"/>
+          <polygon points="200,74 174,90 226,90" fill="#A65E46"/>
+          <rect x="178" y="90" width="44" height="16" fill="#C29552"/>
+          <polygon points="200,104 166,122 234,122" fill="#A65E46"/>
+          <rect x="172" y="122" width="56" height="18" fill="#C29552"/>
+          <polygon points="200,138 158,158 242,158" fill="#A65E46"/>
+          <!-- 砖石塔座 -->
+          <rect x="162" y="158" width="76" height="20" fill="#8C9E8C"/>
+          <!-- 西湖水波 -->
+          <rect x="116" y="178" width="168" height="12" fill="#9BB09D"/>
+          <path d="M134,184 Q168,180 200,184 T266,184" fill="none" stroke="#F2EFE9" stroke-width="1.5"/>
+        `
+      },
+      {
+        id: 'sz_huqiu',
+        city: '苏州',
+        category: '地标建筑',
+        subject: '虎丘云岩寺斜塔',
+        options: ['苏州', '杭州', '扬州', '宁波'],
+        desc: '素有“东方比萨斜塔”美誉的七层八角砖塔，标志性微微倾斜身姿矗立虎丘山巅。',
+        subjectSvg: `
+          <!-- 整体微倾 4 度的七层砖塔 -->
+          <g transform="rotate(4 200 185)">
+            <polygon points="200,34 196,46 204,46" fill="#A65E46"/>
+            <rect x="186" y="46" width="28" height="18" fill="#A65E46"/>
+            <rect x="183" y="66" width="34" height="19" fill="#C98A7A"/>
+            <rect x="180" y="87" width="40" height="20" fill="#A65E46"/>
+            <rect x="177" y="109" width="46" height="21" fill="#C98A7A"/>
+            <rect x="174" y="132" width="52" height="22" fill="#A65E46"/>
+            <rect x="170" y="156" width="60" height="26" fill="#C98A7A"/>
+          </g>
+          <!-- 虎丘山石底座 -->
+          <path d="M148,190 Q200,172 252,190 Z" fill="#58705A"/>
+        `
+      },
+      {
+        id: 'tj_eye',
+        city: '天津',
+        category: '地标建筑',
+        subject: '天津之眼跨河摩天轮',
+        options: ['天津', '南昌', '广州', '哈尔滨'],
+        desc: '世界唯一建在桥梁上的巨型摩天轮，奶油白轮辐与赤陶红轿厢凌空跨立海河之上。',
+        subjectSvg: `
+          <!-- 巨型摩天轮外圈与轮辐 -->
+          <circle cx="200" cy="108" r="56" fill="none" stroke="#F2EFE9" stroke-width="5"/>
+          <circle cx="200" cy="108" r="46" fill="none" stroke="#A65E46" stroke-width="2"/>
+          <line x1="200" y1="52" x2="200" y2="164" stroke="#F2EFE9" stroke-width="2"/>
+          <line x1="144" y1="108" x2="256" y2="108" stroke="#F2EFE9" stroke-width="2"/>
+          <line x1="160" y1="68" x2="240" y2="148" stroke="#F2EFE9" stroke-width="2"/>
+          <line x1="240" y1="68" x2="160" y2="148" stroke="#F2EFE9" stroke-width="2"/>
+          <!-- 中心轴与A字型支架 -->
+          <polygon points="200,108 172,174 182,174" fill="#A65E46"/>
+          <polygon points="200,108 228,174 218,174" fill="#A65E46"/>
+          <circle cx="200" cy="108" r="8" fill="#C29552"/>
+          <!-- 永乐桥跨河桥面 -->
+          <rect x="112" y="172" width="176" height="10" rx="3" fill="#F2EFE9"/>
+          <rect x="112" y="182" width="176" height="8" fill="#8C9E8C"/>
+        `
+      },
+
+      // ==================== 二、代表性动物与人文（4题） ====================
+      {
+        id: 'cd_panda',
+        city: '成都',
+        category: '代表动物/人文',
+        subject: '憨态可掬的大熊猫',
+        options: ['成都', '重庆', '贵阳', '昆明'],
+        desc: '坐在草地上的圆润黑白大熊猫剪影，招牌黑眼圈、圆耳朵与身旁一竿翠绿竹枝尽显萌态。',
+        subjectSvg: `
+          <!-- 左侧翠竹 -->
+          <rect x="136" y="72" width="5" height="118" fill="#58705A"/>
+          <ellipse cx="149" cy="96" rx="10" ry="3.5" transform="rotate(-22 149 96)" fill="#58705A"/>
+          <ellipse cx="128" cy="114" rx="10" ry="3.5" transform="rotate(20 128 114)" fill="#58705A"/>
+          <!-- 熊猫双耳 -->
+          <circle cx="176" cy="84" r="11" fill="#3B473D"/>
+          <circle cx="224" cy="84" r="11" fill="#3B473D"/>
+          <!-- 熊猫圆滚滚身体 -->
+          <ellipse cx="200" cy="154" rx="38" ry="34" fill="#F2EFE9"/>
+          <!-- 黑色肩带与双臂 -->
+          <path d="M164,142 Q200,156 236,142 L232,162 Q200,170 168,162 Z" fill="#3B473D"/>
+          <!-- 黑色双脚掌 -->
+          <ellipse cx="176" cy="182" rx="13" ry="9" fill="#3B473D"/>
+          <ellipse cx="224" cy="182" rx="13" ry="9" fill="#3B473D"/>
+          <!-- 熊猫圆头 -->
+          <circle cx="200" cy="108" r="28" fill="#F2EFE9"/>
+          <!-- 招牌黑眼圈与鼻头 -->
+          <ellipse cx="189" cy="106" rx="7" ry="9" transform="rotate(-18 189 106)" fill="#3B473D"/>
+          <ellipse cx="211" cy="106" rx="7" ry="9" transform="rotate(18 211 106)" fill="#3B473D"/>
+          <circle cx="190" cy="104" r="2.2" fill="#F2EFE9"/>
+          <circle cx="210" cy="104" r="2.2" fill="#F2EFE9"/>
+          <ellipse cx="200" cy="117" rx="4.5" ry="3" fill="#3B473D"/>
+        `
+      },
+      {
+        id: 'xa_terracotta',
+        city: '西安',
+        category: '代表动物/人文',
+        subject: '秦始皇兵马俑武士',
+        options: ['西安', '洛阳', '咸阳', '太原'],
+        desc: '束发高髻、方正威严面庞与陶土棕片状战国铠甲雕塑剪影，尽显大秦锐士雄风。',
+        subjectSvg: `
+          <!-- 高束发髻 -->
+          <rect x="204" y="54" width="12" height="12" rx="3" fill="#8C6D46"/>
+          <!-- 头部雕塑 -->
+          <rect x="184" y="64" width="32" height="36" rx="12" fill="#B58963"/>
+          <!-- 威严五官轮廓 -->
+          <line x1="190" y1="78" x2="198" y2="79" stroke="#5C4433" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="210" y1="78" x2="202" y2="79" stroke="#5C4433" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M193,91 Q200,87 207,91" fill="none" stroke="#5C4433" stroke-width="2"/>
+          <!-- 战国铠甲肩胸剪影 -->
+          <path d="M158,190 L168,106 L232,106 L242,190 Z" fill="#A65E46"/>
+          <!-- 甲片横竖纹理 -->
+          <line x1="165" y1="128" x2="235" y2="128" stroke="#804532" stroke-width="2"/>
+          <line x1="162" y1="150" x2="238" y2="150" stroke="#804532" stroke-width="2"/>
+          <line x1="160" y1="172" x2="240" y2="172" stroke="#804532" stroke-width="2"/>
+          <line x1="186" y1="106" x2="183" y2="190" stroke="#804532" stroke-width="2"/>
+          <line x1="214" y1="106" x2="217" y2="190" stroke="#804532" stroke-width="2"/>
+        `
+      },
+      {
+        id: 'dh_feitian',
+        city: '敦煌',
+        category: '代表动物/人文',
+        subject: '莫高窟飞天反弹琵琶',
+        options: ['敦煌', '大同', '洛阳', '兰州'],
+        desc: '金色沙丘之上凌空起舞的敦煌飞天剪影，柔雾粉棕长绸飘带飞扬，背身反弹琵琶神韵绝美。',
+        subjectSvg: `
+          <!-- 鸣沙山金色沙丘曲线 -->
+          <path d="M108,190 Q175,146 235,190 Z" fill="#EAD2A0"/>
+          <path d="M168,190 Q236,154 292,190 Z" fill="#C29552"/>
+          <!-- 飞舞的柔雾粉棕长绸飘带 -->
+          <path d="M142,118 Q168,62 214,82 T266,68" fill="none" stroke="#C98A7A" stroke-width="5" stroke-linecap="round"/>
+          <path d="M134,132 Q178,108 224,126 T274,104" fill="none" stroke="#A65E46" stroke-width="3.5" stroke-linecap="round"/>
+          <!-- 飞天人物剪影 -->
+          <circle cx="192" cy="84" r="8" fill="#A65E46"/>
+          <path d="M188,92 Q196,114 176,136 L194,142 Q208,118 202,94 Z" fill="#A65E46"/>
+          <!-- 颈后琵琶剪影 -->
+          <ellipse cx="212" cy="88" rx="9" ry="13" transform="rotate(28 212 88)" fill="#C29552"/>
+          <line x1="218" y1="76" x2="228" y2="58" stroke="#804532" stroke-width="3" stroke-linecap="round"/>
+        `
+      },
+      {
+        id: 'qd_may_wind',
+        city: '青岛',
+        category: '代表动物/人文',
+        subject: '五四广场“五月的风”雕塑',
+        options: ['青岛', '大连', '厦门', '烟台'],
+        desc: '标志性赤陶红棕螺旋上升风柱钢雕塑矗立海滨广场，象征激情腾飞的海滨城市地标。',
+        subjectSvg: `
+          <!-- 灰色花岗岩底座 -->
+          <polygon points="174,190 182,164 218,164 226,190" fill="#8C9E8C"/>
+          <!-- 螺旋上升风柱层叠圆环剪影 -->
+          <ellipse cx="200" cy="154" rx="28" ry="10" transform="rotate(-12 200 154)" fill="#A65E46"/>
+          <ellipse cx="202" cy="134" rx="25" ry="9" transform="rotate(-14 202 134)" fill="#C98A7A"/>
+          <ellipse cx="198" cy="114" rx="22" ry="8" transform="rotate(-10 198 114)" fill="#A65E46"/>
+          <ellipse cx="202" cy="94" rx="18" ry="7" transform="rotate(-15 202 94)" fill="#C98A7A"/>
+          <ellipse cx="199" cy="74" rx="14" ry="6" transform="rotate(-12 199 74)" fill="#A65E46"/>
+          <path d="M192,66 Q204,42 216,56 Q204,64 192,66 Z" fill="#A65E46"/>
+        `
+      },
+
+      // ==================== 三、代表性美食（6题） ====================
+      {
+        id: 'bj_copper_pot',
+        city: '北京',
+        category: '代表美食',
+        subject: '老北京紫铜炭火涮肉锅',
+        options: ['北京', '成都', '重庆', '沈阳'],
+        desc: '高耸砂岩金烟囱、双耳圆腹铜锅与底部炭火炉座，经典老北京围炉涮肉意象一目了然。',
+        subjectSvg: `
+          <!-- 高烟囱 -->
+          <polygon points="191,52 209,52 214,122 186,122" fill="#C29552"/>
+          <ellipse cx="200" cy="52" rx="9" ry="3" fill="#804532"/>
+          <!-- 两侧双耳 -->
+          <circle cx="152" cy="136" r="9" fill="none" stroke="#C29552" stroke-width="4"/>
+          <circle cx="248" cy="136" r="9" fill="none" stroke="#C29552" stroke-width="4"/>
+          <!-- 圆腹铜锅身 -->
+          <path d="M156,122 L244,122 L234,164 L166,164 Z" fill="#C29552"/>
+          <!-- 沸腾红汤切面 -->
+          <ellipse cx="200" cy="122" rx="44" ry="10" fill="#A65E46"/>
+          <!-- 底部炭火底座 -->
+          <rect x="172" y="164" width="56" height="26" rx="4" fill="#A65E46"/>
+          <rect x="190" y="171" width="20" height="10" rx="3" fill="#EAD2A0"/>
+        `
+      },
+      {
+        id: 'sh_xiaolongbao',
+        city: '上海',
+        category: '代表美食',
+        subject: '竹编蒸笼南翔小笼包',
+        options: ['上海', '杭州', '南京', '扬州'],
+        desc: '砂岩暖金圆形竹蒸笼内整齐摆放三只饱满奶油白小笼包，顶部精致褶皱与袅袅热气生动呈现。',
+        subjectSvg: `
+          <!-- 袅袅热气 -->
+          <path d="M180,68 Q174,56 180,46" fill="none" stroke="#F2EFE9" stroke-width="3" stroke-linecap="round"/>
+          <path d="M200,62 Q194,50 200,40" fill="none" stroke="#F2EFE9" stroke-width="3" stroke-linecap="round"/>
+          <path d="M220,68 Q214,56 220,46" fill="none" stroke="#F2EFE9" stroke-width="3" stroke-linecap="round"/>
+          <!-- 圆形竹蒸笼 -->
+          <circle cx="200" cy="132" r="54" fill="#C29552"/>
+          <circle cx="200" cy="132" r="45" fill="#EAD2A0"/>
+          <!-- 三只饱满小笼包 -->
+          <circle cx="182" cy="118" r="16" fill="#F2EFE9"/>
+          <circle cx="182" cy="118" r="3.5" fill="#C29552"/>
+          <circle cx="218" cy="118" r="16" fill="#F2EFE9"/>
+          <circle cx="218" cy="118" r="3.5" fill="#C29552"/>
+          <circle cx="200" cy="150" r="16" fill="#F2EFE9"/>
+          <circle cx="200" cy="150" r="3.5" fill="#C29552"/>
+        `
+      },
+      {
+        id: 'wh_reganmian',
+        city: '武汉',
+        category: '代表美食',
+        subject: '武汉芝麻酱热干面',
+        options: ['武汉', '重庆', '成都', '郑州'],
+        desc: '青石板绿纹白瓷大碗盛满裹满浓醇砂岩褐芝麻酱的碱水面，撒上翠绿葱花与赤陶萝卜丁。',
+        subjectSvg: `
+          <!-- 白瓷大碗 -->
+          <path d="M144,132 C144,182 256,182 256,132 Z" fill="#F2EFE9"/>
+          <path d="M154,150 Q200,162 246,150" fill="none" stroke="#8C9E8C" stroke-width="4"/>
+          <rect x="180" y="178" width="40" height="12" rx="3" fill="#8C9E8C"/>
+          <!-- 圆鼓鼓芝麻酱面条堆 -->
+          <path d="M150,132 Q200,92 250,132 Z" fill="#C29552"/>
+          <path d="M164,128 Q200,106 236,128" fill="none" stroke="#805D32" stroke-width="3.5" stroke-linecap="round"/>
+          <!-- 翠绿葱花与赤陶酸豆角 -->
+          <circle cx="190" cy="116" r="3.5" fill="#46604D"/>
+          <circle cx="204" cy="112" r="3.5" fill="#46604D"/>
+          <circle cx="214" cy="118" r="3.5" fill="#46604D"/>
+          <circle cx="198" cy="124" r="3" fill="#A65E46"/>
+        `
+      },
+      {
+        id: 'sz_crab',
+        city: '苏州',
+        category: '代表美食',
+        subject: '阳澄湖大闸蟹',
+        options: ['苏州', '南京', '上海', '宁波'],
+        desc: '赤陶红棕圆润蟹壳、一对威武双螯与八条对称金爪蟹腿，尽显江南秋日肥美风物。',
+        subjectSvg: `
+          <!-- 六条侧足 -->
+          <path d="M168,132 L138,118 L130,134" fill="none" stroke="#C29552" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M166,144 L134,142 L128,158" fill="none" stroke="#C29552" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M170,156 L142,166 L138,182" fill="none" stroke="#C29552" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M232,132 L262,118 L270,134" fill="none" stroke="#C29552" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M234,144 L266,142 L272,158" fill="none" stroke="#C29552" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M230,156 L258,166 L262,182" fill="none" stroke="#C29552" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 一对威武大螯 -->
+          <path d="M176,120 L162,92 C172,84 184,92 180,106 Z" fill="#A65E46"/>
+          <path d="M224,120 L238,92 C228,84 216,92 220,106 Z" fill="#A65E46"/>
+          <!-- 蟹壳主体 -->
+          <ellipse cx="200" cy="144" rx="36" ry="28" fill="#A65E46"/>
+        `
+      },
+      {
+        id: 'cq_hotpot',
+        city: '重庆',
+        category: '代表美食',
+        subject: '九宫格麻辣红油火锅',
+        options: ['重庆', '成都', '武汉', '兰州'],
+        desc: '经典九宫格砂岩金铜格划分沸腾赤陶红油锅底，巴渝热辣豪情一眼即可认出。',
+        subjectSvg: `
+          <!-- 双耳手柄 -->
+          <rect x="132" y="122" width="136" height="18" rx="9" fill="#58705A"/>
+          <!-- 铜锅外圈 -->
+          <circle cx="200" cy="131" r="54" fill="#C29552"/>
+          <!-- 赤陶红油汤底 -->
+          <circle cx="200" cy="131" r="46" fill="#A65E46"/>
+          <!-- 九宫格格线 -->
+          <line x1="184" y1="86" x2="184" y2="176" stroke="#EAD2A0" stroke-width="2.5"/>
+          <line x1="216" y1="86" x2="216" y2="176" stroke="#EAD2A0" stroke-width="2.5"/>
+          <line x1="155" y1="115" x2="245" y2="115" stroke="#EAD2A0" stroke-width="2.5"/>
+          <line x1="155" y1="147" x2="245" y2="147" stroke="#EAD2A0" stroke-width="2.5"/>
+          <!-- 食材点缀 -->
+          <circle cx="200" cy="131" r="5" fill="#EAD2A0"/>
+          <circle cx="170" cy="102" r="4" fill="#F2EFE9"/>
+          <circle cx="230" cy="160" r="4" fill="#58705A"/>
+        `
+      },
+      {
+        id: 'lz_lamian',
+        city: '兰州',
+        category: '代表美食',
+        subject: '兰州牛肉拉面“一清二白”',
+        options: ['兰州', '西安', '银川', '西宁'],
+        desc: '青石板绿大海碗盛满清亮牛肉汤，筷子挑起柔韧拉面，搭配白萝卜片、红辣子与绿蒜苗。',
+        subjectSvg: `
+          <!-- 筷子挑起面条 -->
+          <line x1="176" y1="62" x2="244" y2="82" stroke="#805D32" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="174" y1="72" x2="242" y2="88" stroke="#805D32" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M186,70 L186,132 M195,73 L195,132 M204,76 L204,132" stroke="#EAD2A0" stroke-width="4" stroke-linecap="round"/>
+          <!-- 牛肉汤面与一清二白三红四绿 -->
+          <ellipse cx="200" cy="132" rx="52" ry="12" fill="#C29552"/>
+          <circle cx="178" cy="132" r="5" fill="#F2EFE9"/>
+          <circle cx="222" cy="132" r="4" fill="#A65E46"/>
+          <circle cx="212" cy="136" r="3.5" fill="#46604D"/>
+          <!-- 海碗主体 -->
+          <path d="M148,132 C148,182 252,182 252,132 Z" fill="#8C9E8C"/>
+          <rect x="180" y="178" width="40" height="12" rx="3" fill="#58705A"/>
+        `
+      },
+
+      // ==================== 四、代表性植物（2题） ====================
+      {
+        id: 'ly_peony',
+        city: '洛阳',
+        category: '代表植物',
+        subject: '国色天香洛阳牡丹',
+        options: ['洛阳', '菏泽', '开封', '扬州'],
+        desc: '柔雾粉棕与赤陶重瓣花冠层层舒展，围绕中心暖金花蕊，深橄榄绿宽叶衬托花王风姿。',
+        subjectSvg: `
+          <!-- 绿色花茎与宽叶 -->
+          <rect x="198" y="136" width="4" height="54" fill="#58705A"/>
+          <polygon points="200,152 152,174 176,188" fill="#58705A"/>
+          <polygon points="200,152 248,174 224,188" fill="#58705A"/>
+          <!-- 外层重瓣 -->
+          <circle cx="200" cy="84" r="22" fill="#A65E46"/>
+          <circle cx="232" cy="108" r="22" fill="#A65E46"/>
+          <circle cx="220" cy="142" r="22" fill="#A65E46"/>
+          <circle cx="180" cy="142" r="22" fill="#A65E46"/>
+          <circle cx="168" cy="108" r="22" fill="#A65E46"/>
+          <!-- 内层柔雾粉花冠与暖金花蕊 -->
+          <circle cx="200" cy="116" r="26" fill="#C98A7A"/>
+          <circle cx="200" cy="116" r="10" fill="#EAD2A0"/>
+        `
+      },
+      {
+        id: 'sh_magnolia',
+        city: '上海',
+        category: '代表植物',
+        subject: '市花白玉兰高洁绽放',
+        options: ['上海', '广州', '昆明', '杭州'],
+        desc: '深橄榄绿枝干托起洁白优雅、向上舒展的奶油白玉兰花瓣，尽显海派清雅气韵。',
+        subjectSvg: `
+          <!-- 苍劲花枝 -->
+          <path d="M188,190 Q192,152 200,124" fill="none" stroke="#58705A" stroke-width="5" stroke-linecap="round"/>
+          <ellipse cx="176" cy="156" rx="14" ry="6" transform="rotate(-25 176 156)" fill="#58705A"/>
+          <ellipse cx="222" cy="148" rx="14" ry="6" transform="rotate(25 222 148)" fill="#58705A"/>
+          <!-- 舒展洁白玉兰花瓣 -->
+          <ellipse cx="176" cy="106" rx="12" ry="26" transform="rotate(-35 176 106)" fill="#F2EFE9"/>
+          <ellipse cx="224" cy="106" rx="12" ry="26" transform="rotate(35 224 106)" fill="#F2EFE9"/>
+          <ellipse cx="188" cy="94" rx="11" ry="28" transform="rotate(-14 188 94)" fill="#FFFFFF"/>
+          <ellipse cx="212" cy="94" rx="11" ry="28" transform="rotate(14 212 94)" fill="#FFFFFF"/>
+          <ellipse cx="200" cy="88" rx="10" ry="30" fill="#F2EFE9"/>
+          <ellipse cx="200" cy="108" rx="4" ry="10" fill="#C29552"/>
+        `
+      }
+    ];
+
+    // 真实感同段位虚拟劲敌库（带城市标签、段位、胜率与动态情绪台词）
+    const AI_OPPONENTS = [
+      {
+        name: '成都·辣椒战士',
+        rank: '黄金城市猎手',
+        winrate: '76%',
+        avatar: '🌶️',
+        accuracy: 0.72,
+        minDelay: 2400,
+        maxDelay: 6200,
+        leadTaunt: '这题风景太好认啦，领先一步~',
+        behindTaunt: '哇！手速这么快，差点没看清！'
+      },
+      {
+        name: '北京·胡同百事通',
+        rank: '黄金城市猎手',
+        winrate: '79%',
+        avatar: '🏮',
+        accuracy: 0.75,
+        minDelay: 2200,
+        maxDelay: 5800,
+        leadTaunt: '九州地标我全走遍了，稳赢！',
+        behindTaunt: '好眼力！下一题我可不会让了！'
+      },
+      {
+        name: '杭州·林深',
+        rank: '白银地理官',
+        winrate: '68%',
+        avatar: '🍵',
+        accuracy: 0.68,
+        minDelay: 2600,
+        maxDelay: 6600,
+        leadTaunt: '轻松拿下，这幅画真雅致~',
+        behindTaunt: '糟糕，竟然被你反超了！'
+      },
+      {
+        name: '西安·长安夜行者',
+        rank: '黄金城市猎手',
+        winrate: '74%',
+        avatar: '🗿',
+        accuracy: 0.71,
+        minDelay: 2500,
+        maxDelay: 6300,
+        leadTaunt: '古都底蕴加持，分数归我了！',
+        behindTaunt: '额滴神呀，你居然秒答？！'
+      },
+      {
+        name: '姑苏·画船听雨',
+        rank: '白银地理官',
+        winrate: '70%',
+        avatar: '🌿',
+        accuracy: 0.70,
+        minDelay: 2400,
+        maxDelay: 6100,
+        leadTaunt: '江南好风光，这题我先收下~',
+        behindTaunt: '厉害厉害，容我仔细看看下一幅！'
+      }
+    ];
+
+    /**
+     * ============================================================================
+     * 3. 双人PK游戏主控制器
+     * ============================================================================
+     */
+    class GuessCityApp {
+      constructor() {
+        this.sound = new SoundEngine();
+        this.STORAGE_KEY = 'morandi_city_pk_v3';
+        this.userData = this.loadUserData();
+        this.previewIndex = 0;
+
+        this.matchState = null;
+        this.activeFeedbackIndex = null;
+        this.timerInterval = null;
+        this.aiTimeout = null;
+        this.nextQuestionTimeout = null;
+        this.matchmakingTimeout = null;
+
+        this.initUI();
+      }
+
+      getTodayDateStr() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+
+      loadUserData() {
+        try {
+          const raw = localStorage.getItem(this.STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return {
+              nickname: parsed.nickname || '探险家',
+              energy: typeof parsed.energy === 'number' ? parsed.energy : 200,
+              lastClaimDate: parsed.lastClaimDate || '',
+              wins: parsed.wins || 0,
+              total: parsed.total || 0,
+              streak: parsed.streak || 0
+            };
+          }
+        } catch (e) {}
+        return {
+          nickname: '探险家',
+          energy: 200,
+          lastClaimDate: '',
+          wins: 0,
+          total: 0,
+          streak: 0
+        };
+      }
+
+      saveUserData() {
+        try {
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.userData));
+        } catch (e) {}
+      }
+
+      getRankTitle(wins) {
+        if (wins >= 20) return '👑 钻石环球宗师';
+        if (wins >= 10) return '🔥 黄金城市猎手';
+        if (wins >= 4) return '🧭 白银地理官';
+        return '🛡️ 青铜探险家';
+      }
+
+      initUI() {
+        document.getElementById('player-nickname-input').value = this.userData.nickname;
+        this.updateHeaderAndLobby();
+        this.renderLobbyPreview();
+      }
+
+      updateNickname(val) {
+        const clean = (val || '').trim() || '探险家';
+        this.userData.nickname = clean.slice(0, 8);
+        document.getElementById('player-nickname-input').value = this.userData.nickname;
+        this.saveUserData();
+        this.showToast(`昵称已更新为「${this.userData.nickname}」`, 'info');
+      }
+
+      showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        const styles = {
+          info: 'bg-morandi-ink text-white border-morandi-ink',
+          success: 'bg-morandi-olive text-white border-morandi-olive',
+          error: 'bg-morandi-terracotta text-white border-morandi-terracotta',
+          warning: 'bg-morandi-sand text-white border-morandi-sand'
+        };
+        toast.className = `${styles[type] || styles.info} border px-4 py-2 rounded-full shadow-soft text-xs sm:text-sm font-bold transition-all duration-300 text-center`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(-8px)';
+          setTimeout(() => toast.remove(), 300);
+        }, 2300);
+      }
+
+      updateHeaderAndLobby() {
+        document.getElementById('header-energy').textContent = this.userData.energy;
+        document.getElementById('lobby-energy-big').textContent = this.userData.energy;
+
+        // 每日领取按钮状态
+        const today = this.getTodayDateStr();
+        const claimedToday = this.userData.lastClaimDate === today;
+        const btnClaim = document.getElementById('btn-daily-claim');
+        const textClaim = document.getElementById('daily-claim-text');
+        const rescueBox = document.getElementById('rescue-energy-box');
+
+        if (claimedToday) {
+          btnClaim.disabled = true;
+          textClaim.textContent = '今日免费 +100 元气已领取';
+        } else {
+          btnClaim.disabled = false;
+          textClaim.textContent = '领取每日免费 +100 元气';
+        }
+
+        // 若元气不足100点且今日已领，显示救急补充入口
+        if (this.userData.energy < 100 && claimedToday) {
+          rescueBox.classList.remove('hidden');
+        } else {
+          rescueBox.classList.add('hidden');
+        }
+
+        // 更新段位与连胜统计
+        document.getElementById('player-rank-title').textContent = this.getRankTitle(this.userData.wins);
+        document.getElementById('streak-badge').textContent = `🔥 当前连胜 ${this.userData.streak}`;
+        document.getElementById('stat-wins').textContent = this.userData.wins;
+        document.getElementById('stat-total').textContent = this.userData.total;
+        const winrate = this.userData.total > 0 ? Math.round((this.userData.wins / this.userData.total) * 100) : 0;
+        document.getElementById('stat-winrate').textContent = `${winrate}%`;
+
+        // 开战按钮门槛校验（必须 ≥ 100 点元气值）
+        const btnStart = document.getElementById('btn-start-pk');
+        const btnStartText = document.getElementById('btn-start-text');
+        if (this.userData.energy < 100) {
+          btnStart.disabled = true;
+          btnStartText.textContent = '元气不足 100 点（请先上方领取每日元气）';
+        } else {
+          btnStart.disabled = false;
+          btnStartText.textContent = '立即匹配对手开战（消耗 100 元气）';
+        }
+      }
+
+      claimDailyEnergy() {
+        const today = this.getTodayDateStr();
+        if (this.userData.lastClaimDate === today) {
+          this.showToast('今日 100 点免费元气已领取，明日再来吧！', 'warning');
+          return;
+        }
+        this.userData.energy += 100;
+        this.userData.lastClaimDate = today;
+        this.saveUserData();
+        this.sound.energy();
+        this.spawnScorePop('lobby-energy-pop', '+100 ⚡', true);
+        this.updateHeaderAndLobby();
+        this.showToast('⚡ 成功领取每日免费 +100 元气！', 'success');
+      }
+
+      claimRescueEnergy() {
+        this.userData.energy += 100;
+        this.saveUserData();
+        this.sound.energy();
+        this.spawnScorePop('lobby-energy-pop', '+100 ⚡', true);
+        this.updateHeaderAndLobby();
+        this.showToast('🎁 已领取旅者补给包 +100 元气，快去开战吧！', 'success');
+      }
+
+      debugResetDaily() {
+        this.userData.lastClaimDate = '';
+        this.saveUserData();
+        this.updateHeaderAndLobby();
+        this.toggleRulesModal(false);
+        this.showToast('已重置今日领取状态', 'info');
+      }
+
+      toggleSound() {
+        this.sound.enabled = !this.sound.enabled;
+        document.getElementById('btn-sound').textContent = this.sound.enabled ? '🔊' : '🔇';
+        if (this.sound.enabled) this.sound.click();
+      }
+
+      toggleRulesModal(show) {
+        this.sound.click();
+        const modal = document.getElementById('rules-modal');
+        if (show) modal.classList.remove('hidden');
+        else modal.classList.add('hidden');
+      }
+
+      renderLobbyPreview() {
+        const item = ART_QUESTIONS[this.previewIndex % ART_QUESTIONS.length];
+        document.getElementById('lobby-preview-art').innerHTML = wrapMorandiScene(item.subjectSvg);
+      }
+
+      cycleLobbyPreview() {
+        this.sound.click();
+        this.previewIndex = (this.previewIndex + 1) % ART_QUESTIONS.length;
+        this.renderLobbyPreview();
+      }
+
+      switchView(viewName) {
+        ['lobby', 'matching', 'battle', 'result'].forEach(v => {
+          document.getElementById(`view-${v}`).classList.add('hidden');
+        });
+        document.getElementById(`view-${viewName}`).classList.remove('hidden');
+      }
+
+      clearAllTimers() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        if (this.aiTimeout) clearTimeout(this.aiTimeout);
+        if (this.nextQuestionTimeout) clearTimeout(this.nextQuestionTimeout);
+        if (this.matchmakingTimeout) clearTimeout(this.matchmakingTimeout);
+        this.timerInterval = null;
+        this.aiTimeout = null;
+        this.nextQuestionTimeout = null;
+        this.matchmakingTimeout = null;
+      }
+
+      goHome() {
+        this.sound.click();
+        this.clearAllTimers();
+        this.updateHeaderAndLobby();
+        this.switchView('lobby');
+      }
+
+      startMatchmaking() {
+        this.sound.click();
+        if (this.userData.energy < 100) {
+          this.showToast('⚡ 元气值不足 100 点，请先领取元气后再开战！', 'error');
+          return;
+        }
+
+        // 扣除本局入场 100 元气值（胜出返还100并奖励+100，平局返还100）
+        this.userData.energy -= 100;
+        this.saveUserData();
+        this.updateHeaderAndLobby();
+
+        this.clearAllTimers();
+        this.switchView('matching');
+
+        document.getElementById('match-player-name').textContent = this.userData.nickname;
+        const oppAvatar = document.getElementById('match-opp-avatar');
+        const oppName = document.getElementById('match-opp-name');
+        const oppTitle = document.getElementById('match-opp-title');
+        oppAvatar.textContent = '?';
+        oppAvatar.className = 'w-12 h-12 mx-auto rounded-full bg-morandi-canvas text-morandi-muted border border-morandi-border flex items-center justify-center text-xl font-bold animate-pulse';
+        oppName.textContent = '匹配中...';
+        oppName.className = 'font-bold text-sm mt-2 text-morandi-muted';
+        oppTitle.textContent = '搜寻同段位对手';
+        document.getElementById('matching-status-text').textContent = '奖池已锁定 200 元气值 · 正在抽取 10 幅城市风景画作';
+
+        const opponent = AI_OPPONENTS[Math.floor(Math.random() * AI_OPPONENTS.length)];
+
+        // 1.5 秒真实感对手搜索与揭晓
+        this.matchmakingTimeout = setTimeout(() => {
+          this.sound.correct();
+          oppAvatar.textContent = opponent.avatar;
+          oppAvatar.className = 'w-12 h-12 mx-auto rounded-full bg-morandi-terracotta text-white flex items-center justify-center text-xl';
+          oppName.textContent = opponent.name;
+          oppName.className = 'font-bold text-sm mt-2 text-morandi-ink';
+          oppTitle.textContent = `${opponent.rank} · 胜率 ${opponent.winrate}`;
+          document.getElementById('matching-status-text').textContent = `已锁定对手「${opponent.name}」，即将进入赛场！`;
+
+          this.matchmakingTimeout = setTimeout(() => {
+            this.initBattle(opponent);
+          }, 900);
+        }, 1500);
+      }
+
+      cancelMatchmaking() {
+        this.sound.click();
+        this.clearAllTimers();
+        // 退还入场 100 元气
+        this.userData.energy += 100;
+        this.saveUserData();
+        this.updateHeaderAndLobby();
+        this.switchView('lobby');
+        this.showToast('已取消匹配，退还 100 元气入场费', 'info');
+      }
+
+      shuffle(arr) {
+        const copy = [...arr];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      }
+
+      initBattle(opponent) {
+        const selectedQuestions = this.shuffle(ART_QUESTIONS).slice(0, 10).map(q => ({
+          ...q,
+          shuffledOptions: this.shuffle(q.options)
+        }));
+
+        this.matchState = {
+          opponent,
+          questions: selectedQuestions,
+          currentIndex: 0,
+          playerScore: 0,
+          oppScore: 0,
+          playerCombo: 0,
+          playerCorrectCount: 0,
+          oppCorrectCount: 0,
+          history: [],
+          playerAnswered: false,
+          oppAnswered: false,
+          roundResolved: false,
+          timeLeft: 10
+        };
+
+        document.getElementById('battle-player-name').textContent = this.userData.nickname;
+        document.getElementById('opp-name').textContent = opponent.name;
+        document.getElementById('opp-avatar').textContent = opponent.avatar;
+        document.getElementById('player-score').textContent = '0';
+        document.getElementById('opp-score').textContent = '0';
+        document.getElementById('player-combo-tag').classList.add('hidden');
+        document.getElementById('opp-taunt-bar').textContent = '';
+
+        this.switchView('battle');
+        this.loadQuestion(0);
+      }
+
+      loadQuestion(index) {
+        this.clearAllTimers();
+        const state = this.matchState;
+        state.currentIndex = index;
+        state.playerAnswered = false;
+        state.oppAnswered = false;
+        state.roundResolved = false;
+        state.timeLeft = 10;
+
+        const q = state.questions[index];
+        const stageStr = `STAGE ${String(index + 1).padStart(2, '0')} / 10`;
+
+        document.getElementById('q-current').textContent = String(index + 1).padStart(2, '0');
+        document.getElementById('stage-label').textContent = stageStr;
+        document.getElementById('q-category').textContent = q.category;
+        document.getElementById('art-canvas').innerHTML = wrapMorandiScene(q.subjectSvg);
+
+        document.getElementById('player-status-badge').classList.add('hidden');
+        document.getElementById('both-answered-hint').classList.add('hidden');
+        document.getElementById('trivia-placeholder').classList.remove('hidden');
+        document.getElementById('trivia-content').classList.add('hidden');
+
+        const oppPill = document.getElementById('opp-status-pill');
+        oppPill.textContent = '思考中...';
+        oppPill.className = 'absolute -bottom-2 right-0 text-[10px] px-2 py-0.5 rounded-full bg-morandi-cream text-morandi-muted border border-morandi-border font-medium whitespace-nowrap';
+
+        // 渲染 4 个莫兰迪质感选项按钮
+        const optionsGrid = document.getElementById('options-grid');
+        optionsGrid.innerHTML = '';
+        const letters = ['A', 'B', 'C', 'D'];
+
+        q.shuffledOptions.forEach((city, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.city = city;
+          btn.className = 'soft-btn w-full text-left px-4 py-3 rounded-xl border border-morandi-border bg-morandi-cream hover:bg-morandi-canvas hover:border-morandi-meadow font-bold text-sm sm:text-base text-morandi-ink flex items-center justify-between';
+          btn.innerHTML = `
+            <span class="flex items-center gap-3">
+              <span class="w-7 h-7 rounded-full bg-white border border-morandi-border flex items-center justify-center font-display font-bold text-xs text-morandi-olive">${letters[idx]}</span>
+              <span>${city}</span>
+            </span>
+            <span class="option-marker text-xs font-bold"></span>
+          `;
+          btn.onclick = () => this.handlePlayerAnswer(city);
+          optionsGrid.appendChild(btn);
+        });
+
+        this.updateScoreLeadStatus();
+        this.startQuestionTimer();
+        this.scheduleOpponentAnswer();
+      }
+
+      updateScoreLeadStatus() {
+        const state = this.matchState;
+        const leadHint = document.getElementById('battle-lead-hint');
+        const tauntBar = document.getElementById('opp-taunt-bar');
+        const diff = state.playerScore - state.oppScore;
+
+        if (diff > 0) {
+          leadHint.textContent = `我方领先 +${diff} 分`;
+          leadHint.className = 'text-[11px] font-bold text-morandi-olive mt-1';
+          tauntBar.textContent = `💦 ${state.opponent.behindTaunt}`;
+        } else if (diff < 0) {
+          leadHint.textContent = `暂时落后 ${Math.abs(diff)} 分`;
+          leadHint.className = 'text-[11px] font-bold text-morandi-terracotta mt-1';
+          tauntBar.textContent = `😏 ${state.opponent.leadTaunt}`;
+        } else {
+          leadHint.textContent = '双方比分紧咬';
+          leadHint.className = 'text-[11px] font-medium text-morandi-muted mt-1';
+        }
+      }
+
+      startQuestionTimer() {
+        const timerSecEl = document.getElementById('timer-seconds');
+        const ringEl = document.getElementById('timer-ring-progress');
+        const badgeEl = document.getElementById('timer-badge');
+        const circumference = 113.1; // 2 * PI * 18
+
+        badgeEl.classList.remove('animate-urgent-ring');
+        ringEl.setAttribute('stroke', '#8C9E8C');
+        ringEl.style.strokeDashoffset = '0';
+        timerSecEl.textContent = '10';
+        timerSecEl.className = 'absolute font-display font-extrabold text-sm text-morandi-ink';
+
+        let lastWholeSec = 10;
+        const startTime = Date.now();
+        const duration = 10000;
+
+        this.timerInterval = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, (duration - elapsed) / 1000);
+          const ceilSec = Math.ceil(remaining);
+
+          timerSecEl.textContent = String(ceilSec);
+          const offset = circumference * (1 - remaining / 10);
+          ringEl.style.strokeDashoffset = String(offset);
+
+          // 最后 3 秒赤陶红脉冲警告
+          if (remaining <= 3.0 && remaining > 0) {
+            badgeEl.classList.add('animate-urgent-ring');
+            ringEl.setAttribute('stroke', '#A65E46');
+            timerSecEl.className = 'absolute font-display font-extrabold text-sm text-morandi-terracotta';
+            if (ceilSec < lastWholeSec) {
+              lastWholeSec = ceilSec;
+              if (!this.matchState.playerAnswered) this.sound.tick();
+            }
+          }
+
+          if (remaining <= 0) {
+            clearInterval(this.timerInterval);
+            this.handleTimeUp();
+          }
+        }, 100);
+      }
+
+      scheduleOpponentAnswer() {
+        const state = this.matchState;
+        const opp = state.opponent;
+        const delay = Math.floor(Math.random() * (opp.maxDelay - opp.minDelay)) + opp.minDelay;
+
+        this.aiTimeout = setTimeout(() => {
+          if (state.roundResolved || state.oppAnswered) return;
+          const q = state.questions[state.currentIndex];
+          const isCorrect = Math.random() < opp.accuracy;
+          let chosenCity = q.city;
+          if (!isCorrect) {
+            const wrongCities = q.shuffledOptions.filter(c => c !== q.city);
+            chosenCity = wrongCities[Math.floor(Math.random() * wrongCities.length)];
+          }
+          this.applyOpponentResult(chosenCity);
+        }, delay);
+      }
+
+      applyOpponentResult(chosenCity) {
+        const state = this.matchState;
+        if (state.oppAnswered) return;
+        state.oppAnswered = true;
+
+        const q = state.questions[state.currentIndex];
+        const isCorrect = chosenCity === q.city;
+        const delta = isCorrect ? 100 : -100;
+
+        state.oppScore += delta;
+        if (isCorrect) state.oppCorrectCount++;
+        state.oppLastChoice = chosenCity;
+        state.oppLastCorrect = isCorrect;
+
+        document.getElementById('opp-score').textContent = state.oppScore;
+        this.spawnScorePop('opp-pop-anchor', isCorrect ? '+100' : '-100', isCorrect);
+
+        const oppPill = document.getElementById('opp-status-pill');
+        oppPill.textContent = isCorrect ? '秒答成功 ✓' : '已作答 ✓';
+        oppPill.className = 'absolute -bottom-2 right-0 text-[10px] px-2 py-0.5 rounded-full bg-morandi-meadow text-white font-bold whitespace-nowrap';
+
+        this.updateScoreLeadStatus();
+        this.checkBothAnswered();
+      }
+
+      handlePlayerAnswer(chosenCity) {
+        const state = this.matchState;
+        if (state.playerAnswered || state.roundResolved) return;
+
+        state.playerAnswered = true;
+        const q = state.questions[state.currentIndex];
+        const isCorrect = chosenCity === q.city;
+        const delta = isCorrect ? 100 : -100;
+
+        state.playerScore += delta;
+        if (isCorrect) {
+          state.playerCorrectCount++;
+          state.playerCombo++;
+          this.sound.correct();
+        } else {
+          state.playerCombo = 0;
+          this.sound.wrong();
+        }
+
+        const comboTag = document.getElementById('player-combo-tag');
+        if (state.playerCombo >= 2) {
+          comboTag.textContent = `🔥 ${state.playerCombo}连击`;
+          comboTag.classList.remove('hidden');
+        } else {
+          comboTag.classList.add('hidden');
+        }
+
+        state.playerLastChoice = chosenCity;
+        state.playerLastCorrect = isCorrect;
+
+        document.getElementById('player-score').textContent = state.playerScore;
+        document.getElementById('player-status-badge').classList.remove('hidden');
+        this.spawnScorePop('player-pop-anchor', isCorrect ? '+100' : '-100', isCorrect);
+
+        this.highlightPlayerChoice(chosenCity, q.city);
+        this.updateScoreLeadStatus();
+        this.checkBothAnswered();
+      }
+
+      handleTimeUp() {
+        const state = this.matchState;
+        if (state.roundResolved) return;
+
+        if (!state.playerAnswered) {
+          state.playerAnswered = true;
+          state.playerScore -= 100;
+          state.playerCombo = 0;
+          state.playerLastChoice = '超时未答';
+          state.playerLastCorrect = false;
+          document.getElementById('player-combo-tag').classList.add('hidden');
+          document.getElementById('player-score').textContent = state.playerScore;
+          this.spawnScorePop('player-pop-anchor', '-100', false);
+          this.sound.wrong();
+        }
+
+        if (!state.oppAnswered) {
+          state.oppAnswered = true;
+          state.oppScore -= 100;
+          state.oppLastChoice = '超时未答';
+          state.oppLastCorrect = false;
+          document.getElementById('opp-score').textContent = state.oppScore;
+          this.spawnScorePop('opp-pop-anchor', '-100', false);
+        }
+
+        this.updateScoreLeadStatus();
+        this.resolveRound();
+      }
+
+      checkBothAnswered() {
+        const state = this.matchState;
+        if (state.playerAnswered && state.oppAnswered && !state.roundResolved) {
+          document.getElementById('both-answered-hint').classList.remove('hidden');
+          this.resolveRound();
+        }
+      }
+
+      highlightPlayerChoice(chosenCity, correctCity) {
+        const buttons = document.querySelectorAll('#options-grid button');
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          const city = btn.dataset.city;
+          const marker = btn.querySelector('.option-marker');
+
+          if (city === chosenCity) {
+            if (city === correctCity) {
+              btn.className = 'w-full text-left px-4 py-3 rounded-xl border border-morandi-olive bg-morandi-olive text-white font-bold text-sm sm:text-base flex items-center justify-between';
+              marker.textContent = '✓ 正确 +100';
+            } else {
+              btn.className = 'w-full text-left px-4 py-3 rounded-xl border border-morandi-terracotta bg-morandi-terracotta text-white font-bold text-sm sm:text-base flex items-center justify-between';
+              marker.textContent = '✕ 错误 -100';
+            }
+          } else {
+            btn.classList.add('opacity-65');
+          }
+        });
+      }
+
+      resolveRound() {
+        const state = this.matchState;
+        if (state.roundResolved) return;
+        state.roundResolved = true;
+
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        if (this.aiTimeout) clearTimeout(this.aiTimeout);
+        document.getElementById('timer-badge').classList.remove('animate-urgent-ring');
+
+        const q = state.questions[state.currentIndex];
+
+        // 揭晓正确答案
+        const buttons = document.querySelectorAll('#options-grid button');
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          const city = btn.dataset.city;
+          const marker = btn.querySelector('.option-marker');
+          if (city === q.city) {
+            btn.classList.remove('opacity-65', 'bg-morandi-cream', 'text-morandi-ink');
+            btn.classList.add('bg-morandi-olive', 'text-white', 'border-morandi-olive');
+            if (!marker.textContent) marker.textContent = '✓ 正解';
+          }
+        });
+
+        // 展示城市文化小百科
+        const resultTag = document.getElementById('trivia-result-tag');
+        document.getElementById('trivia-title').textContent = `${q.city} · ${q.subject}`;
+        document.getElementById('trivia-desc').textContent = q.desc;
+
+        if (state.playerLastCorrect) {
+          resultTag.textContent = '回答正确 +100 分';
+          resultTag.className = 'px-2 py-0.5 rounded-full text-[10px] bg-morandi-olive text-white font-bold shrink-0';
+        } else {
+          resultTag.textContent = `${state.playerLastChoice === '超时未答' ? '超时未答' : '回答错误'} -100 分`;
+          resultTag.className = 'px-2 py-0.5 rounded-full text-[10px] bg-morandi-terracotta text-white font-bold shrink-0';
+        }
+        document.getElementById('trivia-placeholder').classList.add('hidden');
+        document.getElementById('trivia-content').classList.remove('hidden');
+
+        state.history.push({
+          question: q,
+          playerChoice: state.playerLastChoice,
+          playerCorrect: state.playerLastCorrect,
+          oppChoice: state.oppLastChoice,
+          oppCorrect: state.oppLastCorrect
+        });
+
+        // 约 1.35 秒后自动切换下一题
+        this.nextQuestionTimeout = setTimeout(() => {
+          if (state.currentIndex + 1 < 10) {
+            this.loadQuestion(state.currentIndex + 1);
+          } else {
+            this.finishBattle();
+          }
+        }, 1350);
+      }
+
+      spawnScorePop(anchorId, text, isPositive) {
+        const anchor = document.getElementById(anchorId);
+        if (!anchor) return;
+        const pop = document.createElement('div');
+        pop.className = `animate-score-pop font-display font-extrabold text-sm sm:text-base px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap ${isPositive ? 'bg-morandi-olive text-white' : 'bg-morandi-terracotta text-white'}`;
+        pop.textContent = text;
+        anchor.appendChild(pop);
+        setTimeout(() => pop.remove(), 1200);
+      }
+
+      finishBattle() {
+        this.clearAllTimers();
+        const state = this.matchState;
+        const pScore = state.playerScore;
+        const oScore = state.oppScore;
+
+        const isWin = pScore > oScore;
+        const isDraw = pScore === oScore;
+
+        this.userData.total += 1;
+
+        if (isWin) {
+          this.userData.wins += 1;
+          this.userData.streak += 1;
+          // 入场已扣100，胜利返还100 + 奖励100 = +200（净增 +100）
+          this.userData.energy += 200;
+          this.sound.victory();
+        } else if (isDraw) {
+          // 平局退还入场 100 元气
+          this.userData.energy += 100;
+          this.sound.correct();
+        } else {
+          // 落败扣除本局 100 元气入场费
+          this.userData.streak = 0;
+          this.sound.defeat();
+        }
+
+        this.saveUserData();
+        this.updateHeaderAndLobby();
+
+        const banner = document.getElementById('result-banner');
+        const statusTitle = document.getElementById('result-status-title');
+        const headline = document.getElementById('result-headline');
+        const energyCard = document.getElementById('result-energy-card');
+        const energyDeltaEl = document.getElementById('result-energy-delta');
+
+        if (isWin) {
+          banner.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-morandi-canvas border border-morandi-olive/40 text-morandi-olive font-bold text-sm mb-3';
+          statusTitle.textContent = '🏆 擂台获胜！';
+          headline.textContent = '技压群雄，独享 200 元气荣誉！';
+          energyCard.className = 'mt-4 inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl border border-morandi-sand/60 bg-[#FBF7EE]';
+          energyDeltaEl.className = 'font-display font-extrabold text-base sm:text-lg text-morandi-sand';
+          energyDeltaEl.textContent = `胜利奖励 +100 元气（返还入场100 + 净赚100，当前余额: ${this.userData.energy}）`;
+        } else if (isDraw) {
+          banner.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-morandi-cream border border-morandi-border text-morandi-ink font-bold text-sm mb-3';
+          statusTitle.textContent = '🤝 棋逢对手 · 平局';
+          headline.textContent = '两位识城高手难分伯仲！';
+          energyCard.className = 'mt-4 inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl border border-morandi-border bg-morandi-cream';
+          energyDeltaEl.className = 'font-display font-extrabold text-base sm:text-lg text-morandi-ink';
+          energyDeltaEl.textContent = `退还入场 100 元气（净变化 ±0，当前余额: ${this.userData.energy}）`;
+        } else {
+          banner.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-morandi-terracotta/15 border border-morandi-terracotta/40 text-morandi-terracotta font-bold text-sm mb-3';
+          statusTitle.textContent = '🌿 惜败一招';
+          headline.textContent = '重整旗鼓，下一局把元气赢回来！';
+          energyCard.className = 'mt-4 inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl border border-morandi-terracotta/40 bg-morandi-terracotta/10';
+          energyDeltaEl.className = 'font-display font-extrabold text-base sm:text-lg text-morandi-terracotta';
+          energyDeltaEl.textContent = `扣除本局入场 -100 元气（当前余额: ${this.userData.energy}）`;
+        }
+
+        document.getElementById('result-player-label').textContent = `${this.userData.nickname}（我方）`;
+        document.getElementById('result-player-score').textContent = pScore;
+        document.getElementById('result-player-accuracy').textContent = `答对 ${state.playerCorrectCount} / 10 题`;
+        document.getElementById('result-opp-name').textContent = state.opponent.name;
+        document.getElementById('result-opp-score').textContent = oScore;
+        document.getElementById('result-opp-accuracy').textContent = `答对 ${state.oppCorrectCount} / 10 题`;
+
+        // 渲染 10 道题目缩略插画与复盘列表
+        const reviewList = document.getElementById('review-list');
+        reviewList.innerHTML = '';
+        state.history.forEach((item, idx) => {
+          const card = document.createElement('div');
+          card.className = 'flex items-center gap-3 p-2.5 rounded-2xl border border-morandi-border bg-morandi-cream';
+          card.innerHTML = `
+            <div class="w-20 h-12 rounded-xl border border-morandi-border bg-morandi-canvas overflow-hidden shrink-0">
+              ${wrapMorandiScene(item.question.subjectSvg)}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-xs font-bold text-morandi-ink truncate">#${idx + 1} ${item.question.city} · ${item.question.subject}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${item.playerCorrect ? 'bg-morandi-olive text-white' : 'bg-morandi-terracotta text-white'} shrink-0">
+                  ${item.playerCorrect ? '+100' : '-100'}
+                </span>
+              </div>
+              <div class="text-[11px] text-morandi-muted mt-0.5">
+                你的选择：<strong class="${item.playerCorrect ? 'text-morandi-olive' : 'text-morandi-terracotta'}">${item.playerChoice}</strong>
+                · 对手：<span>${item.oppChoice}</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 mt-1">
+                <p class="text-[10px] text-morandi-muted/80 truncate flex-1">${item.question.desc}</p>
+                <button id="feedback-btn-${idx}" onclick="app.openFeedbackModal(${idx})" ${item.feedbackSubmitted ? 'disabled' : ''} class="soft-btn shrink-0 px-2.5 py-1 rounded-lg border text-[10px] font-bold ${item.feedbackSubmitted ? 'border-morandi-border bg-morandi-canvas text-morandi-muted cursor-not-allowed' : 'border-morandi-border bg-white text-morandi-olive hover:border-morandi-meadow hover:bg-morandi-canvas'}">
+                  ${item.feedbackSubmitted ? '✓ 已反馈' : '💬 反馈'}
+                </button>
+              </div>
+            </div>
+          `;
+          reviewList.appendChild(card);
+        });
+
+        this.switchView('result');
+      }
+
+      openFeedbackModal(idx) {
+        if (!this.matchState || !this.matchState.history[idx]) return;
+        const item = this.matchState.history[idx];
+        if (item.feedbackSubmitted) return;
+        this.sound.click();
+        this.activeFeedbackIndex = idx;
+        document.getElementById('feedback-question-label').textContent = `#${idx + 1} ${item.question.city} · ${item.question.subject}`;
+        const input = document.getElementById('feedback-input');
+        input.value = '';
+        document.getElementById('feedback-modal').classList.remove('hidden');
+        setTimeout(() => input.focus(), 50);
+      }
+
+      closeFeedbackModal() {
+        this.sound.click();
+        this.activeFeedbackIndex = null;
+        document.getElementById('feedback-modal').classList.add('hidden');
+      }
+
+      submitFeedback() {
+        const idx = this.activeFeedbackIndex;
+        if (idx === null || !this.matchState || !this.matchState.history[idx]) return;
+        const item = this.matchState.history[idx];
+        if (item.feedbackSubmitted) return;
+
+        const input = document.getElementById('feedback-input');
+        const content = (input.value || '').trim();
+        if (!content) {
+          this.showToast('请先输入您的反馈内容', 'warning');
+          input.focus();
+          return;
+        }
+
+        item.feedbackSubmitted = true;
+        this.userData.energy += 20;
+        this.saveUserData();
+        this.updateHeaderAndLobby();
+        this.sound.energy();
+
+        const btn = document.getElementById(`feedback-btn-${idx}`);
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = '✓ 已反馈';
+          btn.className = 'soft-btn shrink-0 px-2.5 py-1 rounded-lg border text-[10px] font-bold border-morandi-border bg-morandi-canvas text-morandi-muted cursor-not-allowed';
+        }
+
+        this.activeFeedbackIndex = null;
+        document.getElementById('feedback-modal').classList.add('hidden');
+        this.showToast('感谢您的反馈，您的反馈是我们前进的动力，并赠送20个元气值', 'success');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      window.app = new GuessCityApp();
+    });
+  </script>
+</body>
+</html>
